@@ -1,0 +1,2184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>German Tracker v15</title>
+<style>
+  :root{
+    --bg:#0e1014; --panel:#161a22; --panel2:#1e232e; --panel3:#262c39;
+    --accent:#ffc83d; --accent2:#5b9dff; --ok:#3ddc84; --err:#ff5c5c;
+    --warn:#ff9f43; --text:#e9ecf1; --muted:#8a92a3; --border:#2a3140;
+    --green:#2ecc71; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif;
+    background:var(--bg); color:var(--text); font-size:15px;}
+  a{color:var(--accent2)}
+
+  header{
+    background:linear-gradient(90deg,#141821,#1c1608);
+    padding:8px 16px; border-bottom:2px solid var(--accent);
+    position:sticky; top:0; z-index:100;
+  }
+  .header-row{display:flex; align-items:center; gap:12px;}
+  .header-row h1{font-size:.95rem; margin:0; color:var(--accent); letter-spacing:.5px; white-space:nowrap}
+  .tabs{display:flex; gap:2px; flex:1; flex-wrap:wrap}
+  .tab{background:transparent; color:var(--muted); border:none;
+    padding:7px 12px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600;}
+  .tab:hover{background:var(--panel2); color:var(--text)}
+  .tab.active{background:var(--accent); color:#111}
+
+  #statusPill{position:relative; cursor:pointer; user-select:none;
+    display:flex; align-items:center; gap:8px;
+    background:var(--panel2); border:1px solid var(--border);
+    border-radius:20px; padding:5px 14px; font-size:.78rem;
+    color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  #statusPill:hover{border-color:var(--accent2)}
+  #statusPill .dot{width:6px; height:6px; border-radius:50%; background:var(--muted);}
+  #statusPill.synced .dot{background:var(--ok)}
+  #statusPill.err .dot{background:var(--err)}
+  #statusPill .usage{color:var(--ok); font-weight:700}
+  #statusPill.usage-warn .usage{color:var(--warn)}
+  #statusPill.usage-danger .usage{color:var(--err)}
+
+  #statusPanel{position:absolute; top:calc(100% + 8px); right:0;
+    background:var(--panel); border:1px solid var(--accent2);
+    border-radius:12px; padding:14px; min-width:340px;
+    box-shadow:0 12px 40px rgba(0,0,0,.6); z-index:150;
+    display:none; text-align:left;}
+  #statusPanel.show{display:block}
+  #statusPanel h4{margin:0 0 10px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+
+  .status-section{background:var(--panel2); border-radius:8px; padding:10px 12px; margin-bottom:10px}
+  .status-section .timer{font-size:1.6rem; font-variant-numeric:tabular-nums;
+    color:var(--accent); font-weight:700; text-align:center}
+  .status-section .flex{justify-content:center; margin-top:8px}
+  .usage-bar{height:4px; background:var(--panel3); border-radius:2px; overflow:hidden; margin-top:6px}
+  .usage-bar-fill{height:100%; background:var(--ok); width:0%; transition:width .3s, background .3s}
+  .usage-bar-fill.warn{background:var(--warn)}
+  .usage-bar-fill.danger{background:var(--err)}
+
+  .auto-row{display:flex; align-items:center; gap:8px; margin:8px 0}
+  .auto-row label{font-size:.78rem; color:var(--muted); min-width:60px}
+  .auto-row select, .auto-row input[type=range]{flex:1}
+  .auto-row .val{font-size:.75rem; color:var(--accent); min-width:36px; text-align:right; font-variant-numeric:tabular-nums}
+
+  main{padding:16px; max-width:1200px; margin:auto}
+  section{display:none}
+  section.active{display:block}
+  h2{margin:0 0 10px 0; font-size:1rem; color:var(--accent2)}
+  h3{margin:12px 0 8px; font-size:.85rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+
+  .card{background:var(--panel); border:1px solid var(--border);
+    border-radius:12px; padding:14px; margin-bottom:14px;}
+  button{background:var(--accent2); color:#fff; border:none;
+    padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600;
+    font-size:.85rem; transition:filter .15s;}
+  button:hover{filter:brightness(1.15)}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  button.ghost{background:transparent; border:1px solid var(--border); color:var(--text)}
+  button.warn{background:var(--err)}
+  button.ok{background:var(--ok); color:#111}
+  button.gold{background:var(--accent); color:#111}
+  button.purple{background:var(--purple); color:#111}
+  button.tiny{padding:4px 8px; font-size:.75rem}
+  button.icon-only{padding:6px 8px}
+
+  input,textarea,select{
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; width:100%; font-family:inherit; font-size:.9rem;}
+  input:focus,textarea:focus,select:focus{outline:none; border-color:var(--accent2)}
+  textarea{min-height:80px; resize:vertical}
+  textarea.code{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.75rem; line-height:1.5}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px}
+  .row > *{flex:1; min-width:120px}
+  .flex{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .muted{color:var(--muted); font-size:.82rem}
+  hr{border:none; border-top:1px solid var(--border); margin:12px 0}
+
+  /* FLASHCARD */
+  .card-stage{display:flex; align-items:center; gap:8px; margin-bottom:12px}
+  .nav-btn{background:var(--panel2); border:1px solid var(--border); color:var(--accent2);
+    width:44px; height:44px; border-radius:50%; cursor:pointer; font-size:1.2rem;
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .nav-btn:hover{border-color:var(--accent2); background:var(--panel3)}
+
+  .flashcard-wrap{flex:1; perspective:1200px; min-height:240px; cursor:pointer; user-select:none;}
+  .flashcard{position:relative; width:100%; min-height:240px;
+    transform-style:preserve-3d; transition:transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);}
+  .flashcard.flipped{transform:rotateY(180deg)}
+  .flashcard-face{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    background:linear-gradient(135deg,#1c2130,#2a2310); border:2px solid var(--accent);
+    border-radius:16px; padding:24px 20px; display:flex; flex-direction:column;
+    justify-content:center; gap:10px; overflow:hidden;}
+  .flashcard-face.back{transform:rotateY(180deg);
+    background:linear-gradient(135deg,#0f2a1a,#1a3520); border-color:var(--ok);}
+  .flashcard-face .label{font-size:.65rem; text-transform:uppercase; letter-spacing:2px;
+    color:var(--muted); position:absolute; top:10px; left:14px;}
+  .flashcard-face .label.right{left:auto; right:14px; color:var(--accent2)}
+  .flashcard-face .q{font-size:1.3rem; font-weight:600; text-align:center; line-height:1.4}
+  .flashcard-face .qen{font-size:.88rem; color:var(--muted); text-align:center}
+  .flashcard-face .a{font-size:1.15rem; color:var(--ok); text-align:center; font-weight:600}
+  .flashcard-face .aen{color:var(--muted); font-size:.88rem; text-align:center}
+
+  .card-play-row{display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap}
+
+  #autoplayBar{background:linear-gradient(90deg,#2a2310,#1c1608);
+    border:1px solid var(--accent); border-radius:10px; padding:10px 14px;
+    margin-top:12px; display:none; align-items:center; gap:10px;}
+  #autoplayBar.show{display:flex}
+  #autoplayBar .status{flex:1; font-size:.85rem; color:var(--accent)}
+  #autoplayBar button{padding:6px 12px; font-size:.8rem}
+
+  /* Filter / sort bar */
+  .filter-bar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
+  .filter-bar select{max-width:180px; flex:0 0 auto; width:auto}
+  .filter-bar .badge{background:var(--panel2)}
+  .filter-group{display:flex; gap:4px; align-items:center}
+  .filter-group label{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
+
+  .log-item{background:var(--panel2); border-left:3px solid var(--accent2);
+    padding:8px 12px; margin-bottom:8px; border-radius:6px; font-size:.82rem; transition:all .2s; cursor:pointer;}
+  .log-item:hover{background:var(--panel3)}
+  .log-item.active-card{border-left-color:var(--accent); background:rgba(255,200,61,.1); border:1px solid var(--accent);}
+  .log-item small{color:var(--muted); display:block; margin-bottom:4px}
+
+  /* CALENDAR */
+  .calendar{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:10px}
+  .cal-head{text-align:center; font-weight:600; color:var(--muted); padding:5px 0; font-size:.7rem}
+  .cal-day{aspect-ratio:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; background:var(--panel2); border-radius:6px; cursor:pointer;
+    border:1px solid transparent; font-size:.82rem; user-select:none;}
+  .cal-day .dnum{font-weight:600}
+  .cal-day .dtime{font-size:.55rem; color:var(--muted); margin-top:1px}
+  .cal-day.done{background:var(--ok); color:#111}
+  .cal-day.done .dtime{color:#0a4a22}
+  .cal-day.today{border-color:var(--accent); border-width:2px}
+  .cal-day.empty{background:transparent; cursor:default}
+
+  /* TOPIC PROGRESS */
+  .topic-progress{background:var(--panel2); border-radius:8px; padding:8px 12px; margin-bottom:6px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .topic-progress .tp-name{font-weight:600; min-width:150px; flex:1; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .topic-progress .tp-group{display:flex; gap:3px}
+  .dot{width:24px; height:22px; border-radius:4px; background:var(--panel3);
+    display:flex; align-items:center; justify-content:center; font-size:.65rem;
+    cursor:pointer; border:1px solid var(--border); transition:all .15s;
+    font-weight:600; color:var(--muted);}
+  .dot.done{background:var(--ok); color:#111; border-color:var(--ok)}
+  .dot.level-done{background:var(--accent2); color:#fff; border-color:var(--accent2)}
+  .dot:hover{filter:brightness(1.2)}
+  .tp-sep{width:1px; height:20px; background:var(--border); margin:0 4px}
+
+  /* HISTORY */
+  .history-item{background:var(--panel2); border-radius:8px; padding:12px 14px;
+    margin-bottom:8px; display:flex; align-items:center; gap:14px; cursor:pointer; border:1px solid transparent; transition:all .2s;}
+  .history-item:hover{background:var(--panel3); border-color:var(--border)}
+  .history-item .hi-type{font-size:.7rem; text-transform:uppercase; color:var(--accent); font-weight:700; min-width:80px}
+  .history-item .hi-main{flex:1}
+  .history-item .hi-title{font-size:.9rem; font-weight:600; margin-bottom:4px}
+  .history-item .hi-meta{font-size:.72rem; color:var(--muted)}
+  .history-item .hi-actions{display:flex; gap:6px}
+
+  /* NOTES */
+  .notes-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px}
+  .note-card{background:var(--panel2); border-radius:10px; padding:12px;
+    cursor:pointer; border:1px solid var(--border); transition:border-color .15s}
+  .note-card:hover{border-color:var(--accent2)}
+  .note-card .note-title{font-weight:600; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .note-card .note-preview{font-size:.78rem; color:var(--muted); max-height:3.6em; overflow:hidden; position:relative; line-height:1.4}
+  .note-card .note-preview::after{content:''; position:absolute; bottom:0; left:0; right:0; height:1.2em; background:linear-gradient(transparent, var(--panel2))}
+  .note-card .note-meta{font-size:.7rem; color:var(--muted); margin-top:6px}
+
+  .note-toolbar{display:flex; gap:4px; flex-wrap:wrap; padding:8px; background:var(--panel2); border-radius:8px; margin-bottom:8px}
+  .note-toolbar button{background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 8px; font-size:.8rem; border-radius:4px; cursor:pointer; min-width:32px}
+  .note-toolbar button:hover{background:var(--panel3)}
+  .note-toolbar input[type=color]{width:32px; height:28px; padding:2px; border-radius:4px; cursor:pointer}
+  .note-toolbar select{width:auto; padding:4px 8px; font-size:.8rem}
+  .note-editor{background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:12px; min-height:220px; outline:none; color:var(--text); font-size:.9rem; line-height:1.6}
+  .note-editor:focus{border-color:var(--accent2)}
+
+  /* GENERATION */
+  .gen-box{background:var(--panel2); border-radius:12px; padding:14px; margin-top:10px}
+  .mode-picker{display:flex; gap:6px; margin-bottom:10px}
+  .mode-picker button{flex:1; padding:10px; font-size:.85rem}
+  .mode-picker button.active{background:var(--accent); color:#111}
+
+  /* QUIZ - Horizontal top menu + left history */
+  .quiz-header{display:flex; gap:4px; margin-bottom:14px; flex-wrap:wrap; background:var(--panel);
+    border:1px solid var(--border); border-radius:12px; padding:6px;}
+  .quiz-tab{background:transparent; color:var(--muted); border:none;
+    padding:9px 16px; border-radius:8px; cursor:pointer; font-size:.85rem; font-weight:600;}
+  .quiz-tab:hover{background:var(--panel2); color:var(--text)}
+  .quiz-tab.active{background:var(--accent2); color:#fff}
+
+  .quiz-layout{display:grid; grid-template-columns:280px 1fr; gap:14px;}
+  @media(max-width:800px){ .quiz-layout{grid-template-columns:1fr} }
+  .quiz-side{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; height:fit-content; position:sticky; top:80px; max-height:calc(100vh - 100px); overflow-y:auto;}
+  .quiz-side h4{margin:0 0 10px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+  .side-hist-item{background:var(--panel2); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:.78rem; cursor:pointer; border:1px solid transparent;}
+  .side-hist-item:hover{border-color:var(--accent2)}
+  .side-hist-item .sh-title{font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .side-hist-item .sh-meta{color:var(--muted); font-size:.7rem}
+
+  .subpanel{display:none}
+  .subpanel.active{display:block}
+
+  /* QUIZ ELEMENTS */
+  .qa-card{background:var(--panel2); border-left:3px solid var(--accent); border-radius:8px; padding:10px 12px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start; position:relative}
+  .qa-card .qa-text{flex:1}
+  .qa-card .qa-de{font-weight:600; margin-bottom:2px}
+  .qa-card .qa-en{font-size:.82rem; color:var(--muted)}
+  .qa-card .qa-ans{font-size:.82rem; color:var(--ok); margin-top:6px; padding-top:6px; border-top:1px dashed var(--border)}
+  .qa-card .qa-actions{display:flex; gap:4px; flex-shrink:0; align-items:flex-start}
+
+  .chunk-card{background:var(--panel2); border-radius:8px; padding:10px 12px; margin-bottom:8px; border-left:3px solid var(--purple);}
+  .chunk-card .chunk-de{font-weight:600; margin-bottom:2px}
+  .chunk-card .chunk-en{font-size:.82rem; color:var(--muted)}
+  .chunk-card .chunk-ex{font-size:.78rem; color:var(--accent); margin-top:4px}
+
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
+  .chip{background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    padding:5px 12px; border-radius:20px; cursor:pointer; font-size:.78rem;}
+  .chip.active{background:var(--accent2); color:#fff; border-color:var(--accent2)}
+
+  .badge{display:inline-block; background:var(--panel2); padding:2px 8px; border-radius:20px; font-size:.72rem; color:var(--muted)}
+
+  .stat{display:inline-block; background:var(--panel2); padding:8px 14px; border-radius:10px; margin-right:6px; margin-bottom:6px; min-width:100px;}
+  .stat b{color:var(--accent); font-size:1.15rem; display:block}
+  .stat small{color:var(--muted); font-size:.72rem}
+
+  .correct{color:var(--ok); font-weight:700}
+  .wrong{color:var(--err); font-weight:700}
+
+  #fab{position:fixed; bottom:20px; right:20px; width:52px; height:52px; border-radius:50%; background:var(--accent); color:#111; font-size:1.5rem; border:none; cursor:pointer; z-index:90; box-shadow:0 8px 24px rgba(255,200,61,.35);}
+  #fab:hover{transform:scale(1.05)}
+
+  #toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(120px); background:var(--panel3); color:var(--text); padding:10px 18px; border-radius:10px; border-left:4px solid var(--accent2); z-index:200; transition:transform .25s; font-size:.85rem; box-shadow:0 8px 24px rgba(0,0,0,.4); max-width:90vw;}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.err{border-left-color:var(--err)}
+  #toast.ok{border-left-color:var(--ok)}
+
+  .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:150; padding:16px}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px; width:min(600px,100%); max-height:90vh; overflow-y:auto;}
+  .modal h3{margin-top:0; color:var(--accent)}
+  .modal .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:14px}
+  .modal-tabs{display:flex; gap:4px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px}
+  .modal-tab{padding:6px 12px; font-size:.82rem; background:transparent; color:var(--muted); border:none; cursor:pointer; border-radius:6px;}
+  .modal-tab.active{background:var(--accent2); color:#fff}
+
+  .chat-msg{border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:.82rem;}
+  .chat-msg.user{background:#1a2c44; border-left:3px solid var(--accent2)}
+  .chat-msg.ai{background:#1f2a1a; border-left:3px solid var(--ok)}
+  .chat-msg.error{background:#3a1a1a; border-left:3px solid var(--err)}
+  .chat-msg .meta{font-size:.68rem; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:1px;}
+  .chat-msg pre{background:rgba(0,0,0,.3); padding:8px; border-radius:5px; overflow-x:auto; font-size:.72rem; margin:5px 0; white-space:pre-wrap; word-break:break-word;}
+  .chat-msg details summary{cursor:pointer; color:var(--accent2); font-size:.75rem; margin-top:4px}
+
+  .quiz-score{display:flex; gap:10px; margin-bottom:10px}
+  .score-box{flex:1; background:var(--panel2); border-radius:8px; padding:8px; text-align:center}
+  .score-box b{display:block; font-size:1.2rem; color:var(--ok)}
+  .score-box small{color:var(--muted); font-size:.72rem}
+
+  .q-en-hidden{display:none}
+  .q-en-hidden.show{display:block}
+  .eye-btn{padding:2px 8px; font-size:.72rem; border-radius:12px; background:transparent; border:1px solid var(--border); color:var(--muted); cursor:pointer; margin-left:6px}
+  .eye-btn:hover{color:var(--accent)}
+
+  .listen-q{background:var(--panel2); border-radius:8px; padding:10px 12px; margin-bottom:8px;}
+  .listen-q .num{color:var(--accent); font-weight:700; margin-right:6px}
+  .listen-q input{margin-top:8px}
+  .listen-q .correction{margin-top:8px; padding:8px 10px; border-radius:6px; background:rgba(46,204,113,.08); border-left:3px solid var(--ok); font-size:.8rem;}
+  .listen-q .correction.wrong{background:rgba(255,92,92,.08); border-left-color:var(--err);}
+  .dialog-line{display:flex; gap:8px; padding:6px 10px; margin-bottom:4px; background:var(--panel2); border-radius:6px; font-size:.82rem;}
+  .dialog-line .speaker{font-weight:700; color:var(--accent2); flex-shrink:0}
+  .dialog-line.b .speaker{color:var(--ok)}
+
+  /* LIVE SPEAKING CHAT */
+  .chat-container { display: flex; flex-direction: column; height: 400px; background: var(--panel2); border-radius: 8px; padding: 10px; overflow-y: auto; margin-bottom: 10px; }
+  .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 14px; margin-bottom: 10px; font-size: 0.9rem; line-height: 1.4; }
+  .chat-bubble.user { align-self: flex-end; background: var(--accent2); color: #fff; border-bottom-right-radius: 2px; }
+  .chat-bubble.ai { align-self: flex-start; background: var(--panel3); color: var(--text); border-bottom-left-radius: 2px; }
+  .chat-bubble.ai .translation { font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input-row input { flex: 1; }
+
+  .history-loaded-banner{
+    background:rgba(91,157,255,.12); border:1px solid var(--accent2);
+    border-radius:8px; padding:8px 12px; margin-bottom:10px;
+    font-size:.82rem; color:var(--accent2); display:flex; align-items:center; gap:10px;
+    justify-content:space-between; flex-wrap:wrap;
+  }
+  .history-loaded-banner button{padding:4px 10px; font-size:.75rem}
+
+  .pagination{display:flex; gap:4px; flex-wrap:wrap; margin-top:10px}
+
+  @media (max-width:600px){
+    .header-row h1{font-size:.85rem}
+    .tab{padding:6px 10px; font-size:.78rem}
+    #statusPill{padding:4px 10px; font-size:.72rem}
+    .quiz-layout{grid-template-columns:1fr}
+    .chat-container { height: 300px; }
+    .topic-progress{flex-direction:column; align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <h1>German Tracker</h1>
+    <div class="tabs">
+      <button class="tab" data-tab="study">Study</button>
+      <button class="tab" data-tab="prompt">Generate</button>
+      <button class="tab" data-tab="cards">Cards</button>
+      <button class="tab" data-tab="quiz">Quiz</button>
+      <button class="tab" data-tab="notes">Notes</button>
+      <button class="tab" data-tab="prompts">Prompts</button>
+      <button class="tab" data-tab="chat">Chat Log</button>
+    </div>
+    <div id="statusPill">
+      <span class="dot"></span>
+      <span class="timer-text">00:00</span>
+      <span class="sep">·</span>
+      <span class="usage">0/1000</span>
+      <span style="font-size:.6em">▾</span>
+      <div id="statusPanel" onclick="event.stopPropagation()">
+        <h4>Timer</h4>
+        <div class="status-section">
+          <div class="timer" id="panelTimer">00:00:00</div>
+          <div class="flex">
+            <button id="panelStart" class="ok">Start</button>
+            <button id="panelPause" class="ghost">Pause</button>
+            <button id="panelStop" class="warn">Stop &amp; Save</button>
+          </div>
+        </div>
+        <h4>Groq Usage</h4>
+        <div class="status-section">
+          <div style="display:flex; justify-content:space-between; font-size:.8rem; align-items:center">
+            <span>Requests today</span>
+            <span><b id="panelUsageCount" style="color:var(--accent)">0</b> / <span id="panelUsageLimit">1000</span></span>
+          </div>
+          <div class="usage-bar"><div class="usage-bar-fill" id="panelUsageFill"></div></div>
+        </div>
+        <h4>Settings</h4>
+        <div class="status-section">
+          <div class="auto-row">
+            <label>Speed</label>
+            <input type="range" id="autoSpeed" min="0.5" max="1.5" step="0.1" value="1.0"/>
+            <span class="val" id="autoSpeedVal">1.0x</span>
+          </div>
+          <div class="auto-row">
+            <label>Pause</label>
+            <input type="range" id="autoPause" min="0.5" max="5" step="0.2" value="1.2"/>
+            <span class="val" id="autoPauseVal">1.2s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- =============== STUDY =============== -->
+<section id="study">
+  <div class="card" id="stats"></div>
+  <div class="card">
+    <h2>Study Calendar</h2>
+    <div class="flex">
+      <button class="ghost tiny" id="prevMonth">←</button>
+      <strong id="monthLabel" style="flex:1; text-align:center"></strong>
+      <button class="ghost tiny" id="nextMonth">→</button>
+    </div>
+    <div class="calendar" id="calendar"></div>
+  </div>
+  <div class="card">
+    <h2>Topic Progress</h2>
+    <p class="muted">Click level or phase dots to toggle done.</p>
+    <div id="topicProgressList"></div>
+  </div>
+</section>
+
+<!-- =============== GENERATE =============== -->
+<section id="prompt">
+  <div class="card">
+    <h2>Generate for Topic</h2>
+    <h3>Topics (right-click to delete)</h3>
+    <div class="chips" id="topicChips"></div>
+    <div class="row">
+      <input id="newTopicInput" placeholder="Add topic..."/>
+      <button class="tiny" id="addTopicBtn">+ Add</button>
+    </div>
+    <hr>
+    <h3>Configuration</h3>
+    <div class="row">
+      <div><label class="muted">Target level</label>
+        <select id="targetLevel"><option>A1</option><option selected>A2</option><option>B1</option><option>B2</option><option>C1</option></select>
+      </div>
+      <div><label class="muted">Count (empty = auto)</label>
+        <input id="numQuestions" type="number" min="3" max="200" placeholder="auto"/>
+      </div>
+    </div>
+    <div class="gen-box">
+      <div class="mode-picker">
+        <button class="gold active" data-mode="qa">Q&amp;A with answers</button>
+        <button class="ghost" data-mode="chunks">Chunk bank</button>
+      </div>
+      <label class="muted">Extra instructions (optional)</label>
+      <textarea id="promptInstructions" style="min-height:50px; margin-bottom:8px" placeholder="e.g. focus on separable verbs"></textarea>
+      <label class="muted">Prompt (loaded from templates — editable for this one generation)</label>
+      <textarea id="genPromptBox" class="code" style="min-height:180px"></textarea>
+      <div class="flex" style="margin-top:10px">
+        <button class="ghost tiny" id="saveAsDefaultBtn">Save as default</button>
+        <button class="gold" id="generateBtn">Send</button>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="genResultCard" style="display:none">
+    <h2 id="genResultTitle">Results</h2>
+    <div class="flex" style="margin-bottom:10px">
+      <button class="ghost tiny" id="speakAllBtn">Speak all</button>
+      <button class="ghost tiny" id="addAllBtn">Add all</button>
+      <button class="warn tiny" id="clearResultsBtn">Clear</button>
+    </div>
+    <div id="qaResults"></div>
+  </div>
+</section>
+
+<!-- =============== CARDS =============== -->
+<section id="cards">
+  <div class="card">
+    <h2>Flashcards</h2>
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>Type</label>
+        <select id="cardTypeFilter">
+          <option value="all">All types</option>
+          <option value="qa">Q&amp;A</option>
+          <option value="chunk">Chunks</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Topic</label>
+        <select id="cardTopicFilter"><option value="all">All topics</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Level</label>
+        <select id="cardLevelFilter"><option value="all">All levels</option><option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option></select>
+      </div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <select id="cardSort">
+          <option value="topic">Topic</option>
+          <option value="level">Level</option>
+          <option value="type">Type</option>
+          <option value="newest">Newest</option>
+        </select>
+      </div>
+      <span class="badge" id="cardCounter">0 / 0</span>
+    </div>
+
+    <div class="card-stage">
+      <button class="nav-btn" id="prevCard" title="Previous">‹</button>
+      <div class="flashcard-wrap" id="flashcardWrap">
+        <div class="flashcard" id="flashcard">
+          <div class="flashcard-face front">
+            <div class="label">Frage</div>
+            <div class="label right" id="cardTopicBadge"></div>
+            <div class="q" id="cardQ">No cards yet</div>
+            <div class="qen" id="cardQEn"></div>
+          </div>
+          <div class="flashcard-face back">
+            <div class="label">Antwort</div>
+            <div class="a" id="cardA"></div>
+            <div class="aen" id="cardAEn"></div>
+          </div>
+        </div>
+      </div>
+      <button class="nav-btn" id="nextCard" title="Next">›</button>
+    </div>
+    <div class="card-play-row">
+      <button class="ghost" id="speakCardQ">Frage</button>
+      <button class="ghost" id="speakCardA">Antwort</button>
+      <button class="purple" id="startAutoplayBtn">Autoplay</button>
+    </div>
+    <div id="autoplayBar">
+      <span class="status" id="autoplayStatus">Playing...</span>
+      <button class="ghost" id="autoPauseBtn">Pause</button>
+      <button class="warn" id="autoStopBtn">Stop</button>
+    </div>
+    <p class="muted" style="text-align:center; margin-top:10px; font-size:.75rem">Click the card or press Space to flip · Autoplay uses the sorted+filtered pool</p>
+  </div>
+
+  <div class="card">
+    <h2>Card List</h2>
+    <p class="muted">Filtered and sorted the same as the deck above. Click a card to jump to it.</p>
+    <div id="cardList"></div>
+    <div class="flex" style="margin-top:10px">
+      <button class="ghost tiny" id="exportAnki">Export Anki CSV</button>
+      <button class="warn tiny" id="clearCards">Delete all</button>
+    </div>
+  </div>
+</section>
+
+<!-- =============== QUIZ =============== -->
+<section id="quiz">
+  <div class="quiz-header">
+    <button class="quiz-tab active" data-sub="quiz-translate">Translate</button>
+    <button class="quiz-tab" data-sub="quiz-listen">Listening Exam</button>
+    <button class="quiz-tab" data-sub="quiz-scramble">Word Order</button>
+    <button class="quiz-tab" data-sub="quiz-speak">Live Conversation</button>
+  </div>
+
+  <div class="quiz-layout">
+    <aside class="quiz-side">
+      <h4>History</h4>
+      <div id="quizSideHistory"><p class="muted" style="font-size:.8rem">No exercises yet.</p></div>
+    </aside>
+
+    <div>
+      <!-- Translate -->
+      <div class="subpanel active" id="quiz-translate">
+        <div class="card">
+          <h2>Translate</h2>
+          <div class="flex" style="margin-bottom:10px">
+            <button class="ghost tiny" id="dirToggle">EN → DE</button>
+            <select id="quizTopicSel" style="flex:1; max-width:240px"></select>
+            <button class="gold" id="genTranslateQ">New question</button>
+          </div>
+          <div class="quiz-score">
+            <div class="score-box"><b id="scoreTransCorrect">0</b><small>Correct</small></div>
+            <div class="score-box"><b id="scoreTransTotal">0</b><small>Attempts</small></div>
+          </div>
+          <div id="translateQuizBox"><p class="muted">Pick a topic.</p></div>
+        </div>
+      </div>
+
+      <!-- Listen -->
+      <div class="subpanel" id="quiz-listen">
+        <div class="card">
+          <h2>Listening Exam</h2>
+          <div class="row">
+            <div><label class="muted">Topic</label><select id="listenTopicSel"></select></div>
+            <div><label class="muted">Level</label>
+              <select id="listenLevel"><option>A1</option><option selected>A2</option><option>B1</option><option>B2</option><option>C1</option></select>
+            </div>
+          </div>
+          <div class="row">
+            <div><label class="muted">Sentences/turns</label><input id="listenSentences" type="number" value="6" min="2" max="20"/></div>
+            <div><label class="muted">Questions</label><input id="listenQuestions" type="number" value="4" min="1" max="20"/></div>
+            <div><label class="muted">Format</label>
+              <select id="listenFormat"><option value="paragraph" selected>Paragraph</option><option value="dialog">Dialogue</option></select>
+            </div>
+            <div><label class="muted">Exam type</label>
+              <select id="listenExamType"><option value="excluded" selected>Questions visible</option><option value="included">Numbers only</option></select>
+            </div>
+          </div>
+          <div class="flex" style="margin-bottom:10px">
+            <button class="gold" id="genListenQ">Generate</button>
+            <button class="ghost tiny" id="playListenBtn" disabled>Play</button>
+            <button class="ghost tiny" id="slowListen">Slow</button>
+          </div>
+          <div id="listenQuizBox"><p class="muted">Choose a topic.</p></div>
+        </div>
+      </div>
+
+      <!-- Scramble -->
+      <div class="subpanel" id="quiz-scramble">
+        <div class="card">
+          <h2>Word Order</h2>
+          <div class="flex" style="margin-bottom:10px">
+            <select id="scrambleTopicSel" style="flex:1; max-width:240px"></select>
+            <button class="gold" id="genScrambleQ">New scramble</button>
+          </div>
+          <div class="quiz-score">
+            <div class="score-box"><b id="scoreScrambleCorrect">0</b><small>Correct</small></div>
+            <div class="score-box"><b id="scoreScrambleTotal">0</b><small>Attempts</small></div>
+          </div>
+          <div id="scrambleQuizBox"><p class="muted">Generate a sentence.</p></div>
+        </div>
+      </div>
+
+      <!-- Live Conversation -->
+      <div class="subpanel" id="quiz-speak">
+        <div class="card">
+          <h2>Live Conversation</h2>
+          <div class="row">
+            <div style="flex:2">
+              <label class="muted">Scenario (editable or pick from list)</label>
+              <input id="speakScenario" list="scenarioList" placeholder="e.g. A doctor's visit (symptoms, booking appointments)"/>
+              <datalist id="scenarioList">
+                <option value="A doctor's visit (symptoms, booking appointments)">
+                <option value="Apartment hunting (rent, utilities, neighborhood)">
+                <option value="Shopping & Returns (sizes, defective items)">
+                <option value="A job interview (experience, strengths)">
+                <option value="Ordering food at a restaurant (menu, paying)">
+                <option value="At the train station (tickets, delays, connections)">
+                <option value="At the bank (opening an account, transferring money)">
+                <option value="Making a phone call to a company (customer service)">
+                <option value="Registering at the town hall (Anmeldung)">
+                <option value="At the pharmacy (describing symptoms, asking for medicine)">
+                <option value="Renting a car (insurance, fuel, return)">
+                <option value="At a hotel (check-in, complaints, booking changes)">
+                <option value="Talking to a landlord about a problem">
+                <option value="At the university (enrollment, courses, exams)">
+                <option value="Planning a trip with a friend (dates, budget, transport)">
+              </datalist>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label class="muted">Level</label>
+              <select id="speakLevel">
+                <option>A1</option><option>A2</option><option selected>B1</option><option>B2</option><option>C1</option>
+              </select>
+            </div>
+            <div>
+              <label class="muted">Mode</label>
+              <select id="speakMode">
+                <option value="normal" selected>Normal conversation</option>
+                <option value="teacher">Teacher (corrects mistakes)</option>
+                <option value="examiner">Examiner (formal test)</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:flex-end">
+              <button class="purple" id="startChatBtn" style="width:100%">Start Chat</button>
+            </div>
+          </div>
+
+          <div id="chatUI" style="display:none">
+            <div class="chat-container" id="chatContainer"></div>
+            <div class="chat-input-row">
+              <button class="ghost tiny" id="micBtn" title="Use Microphone (Speech to Text)" style="padding:8px 12px">🎤</button>
+              <input id="chatInput" placeholder="Type your response in German..." onkeypress="if(event.key==='Enter') sendChatMessage()"/>
+              <button class="gold" id="sendChatBtn" onclick="sendChatMessage()">Send</button>
+            </div>
+            <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+              <button class="ghost tiny" id="endChatBtn">End & Save to History</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============== NOTES =============== -->
+<section id="notes">
+  <div class="card">
+    <div class="flex" style="margin-bottom:12px">
+      <h2 style="margin:0; flex:1">Notes</h2>
+      <button class="gold" id="newNoteBtn">+ New Note</button>
+    </div>
+    <div class="notes-grid" id="notesGrid"></div>
+  </div>
+</section>
+
+<!-- =============== PROMPTS =============== -->
+<section id="prompts">
+  <div class="card">
+    <h2>Editable Prompt Templates</h2>
+    <p class="muted">Variables: <code>{topic}</code> <code>{level}</code> <code>{n}</code> <code>{extra}</code> <code>{vocab}</code> <code>{sentences}</code> <code>{questions}</code> <code>{format}</code> <code>{unit}</code> <code>{scenario}</code> <code>{mode}</code></p>
+    <h3>1. Q&amp;A with answers</h3>
+    <textarea id="promptGenQuestions" class="code" style="min-height:180px"></textarea>
+    <h3>2. Chunk bank</h3>
+    <textarea id="promptChunks" class="code" style="min-height:160px"></textarea>
+    <h3>3. Listening</h3>
+    <textarea id="promptListening" class="code" style="min-height:200px"></textarea>
+    <h3>4. Translate check (AI grading)</h3>
+    <textarea id="promptTranslateCheck" class="code" style="min-height:140px"></textarea>
+    <h3>5. Listening check (AI grading)</h3>
+    <textarea id="promptListenCheck" class="code" style="min-height:160px"></textarea>
+    <h3>6. Ask AI (explain word order)</h3>
+    <textarea id="promptAskAI" class="code" style="min-height:120px"></textarea>
+    <h3>7. Conversation Partner</h3>
+    <textarea id="promptChatPartner" class="code" style="min-height:160px"></textarea>
+    <div class="flex" style="margin-top:14px">
+      <button class="gold" id="savePrompts">Save</button>
+      <button class="ghost" id="resetPrompts">Reset</button>
+    </div>
+  </div>
+</section>
+
+<!-- =============== CHAT LOG =============== -->
+<section id="chat">
+  <div class="card">
+    <h2>Groq API Log (local only)</h2>
+    <p class="muted">Requests and responses are stored locally for debugging only — not synced to Supabase.</p>
+    <div class="flex" style="margin-bottom:10px">
+      <button class="ghost tiny" id="clearChat">Clear</button>
+      <button class="ghost tiny" id="exportChat">Export JSON</button>
+      <span class="badge" id="chatCount">0</span>
+    </div>
+    <div id="chatLog"><p class="muted">No requests yet.</p></div>
+  </div>
+</section>
+
+</main>
+
+<button id="fab">+</button>
+<div id="toast"></div>
+
+<!-- MODALS -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>Settings</h3>
+    <label class="muted">Groq API key</label>
+    <input id="apiKeyInput"/>
+    <hr>
+    <label class="muted">Supabase URL</label>
+    <input id="supaUrlInput"/>
+    <label class="muted" style="display:block; margin-top:10px">Supabase anon key</label>
+    <input id="supaKeyInput"/>
+    <label class="muted" style="display:block; margin-top:10px">Sync code</label>
+    <input id="syncCodeInput"/>
+    <div class="actions">
+      <button class="ghost" id="testConnection">Test</button>
+      <button class="ghost" id="closeSettings">Close</button>
+      <button class="gold" id="saveSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="addCardModal">
+  <div class="modal">
+    <h3>Add / Edit Flashcard</h3>
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-ctab="manual">Manual</button>
+      <button class="modal-tab" data-ctab="bulk">Bulk Paste</button>
+    </div>
+    <div id="cardTabManual">
+      <label class="muted">Topic</label>
+      <select id="modalTopic"></select>
+      <label class="muted" style="display:block; margin-top:10px">Level</label>
+      <select id="modalLevel"><option>A1</option><option selected>A2</option><option>B1</option><option>B2</option><option>C1</option></select>
+      <label class="muted" style="display:block; margin-top:10px">Question (German)</label>
+      <input id="modalQDe"/>
+      <label class="muted" style="display:block; margin-top:10px">Question (English)</label>
+      <input id="modalQEn"/>
+      <label class="muted" style="display:block; margin-top:10px">Answer (German)</label>
+      <input id="modalADe"/>
+      <label class="muted" style="display:block; margin-top:10px">Answer (English)</label>
+      <input id="modalAEn"/>
+    </div>
+    <div id="cardTabBulk" style="display:none">
+      <label class="muted">Topic</label>
+      <select id="bulkTopic"></select>
+      <label class="muted" style="display:block; margin-top:10px">Level</label>
+      <select id="bulkLevel"><option>A1</option><option selected>A2</option><option>B1</option><option>B2</option><option>C1</option></select>
+      <label class="muted" style="display:block; margin-top:10px">Paste Q&A pairs — question ending with ?, then English, blank line, next pair.</label>
+      <textarea id="bulkInput" placeholder="wie ist Ihr Name?&#10;what is your name?&#10;&#10;wo wohnen Sie?&#10;where do you live?"></textarea>
+    </div>
+    <div class="actions">
+      <button class="ghost" id="cancelAddCard">Cancel</button>
+      <button class="gold" id="confirmAddCard">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="noteModal">
+  <div class="modal">
+    <h3 id="noteModalTitle">New Note</h3>
+    <label class="muted">Title (auto-filled from content if empty)</label>
+    <input id="noteTitle" placeholder="Leave empty to auto-title"/>
+    <div class="note-toolbar">
+      <button data-cmd="bold" title="Bold"><b>B</b></button>
+      <button data-cmd="italic" title="Italic"><i>I</i></button>
+      <button data-cmd="underline" title="Underline"><u>U</u></button>
+      <input type="color" id="noteColor" value="#ffc83d" title="Text color"/>
+      <select id="noteSize"><option value="2">Small</option><option value="3" selected>Normal</option><option value="4">Large</option><option value="5">X-Large</option></select>
+      <button data-cmd="removeFormat" title="Clear formatting">A<sup>×</sup></button>
+    </div>
+    <div class="note-editor" id="noteEditor" contenteditable="true" placeholder="Write your note here..."></div>
+    <p class="muted" id="noteTimestamp" style="margin-top:8px; font-size:.75rem"></p>
+    <div class="actions">
+      <button class="ghost" id="cancelNote">Cancel</button>
+      <button class="warn" id="deleteNote">Delete</button>
+      <button class="gold" id="saveNote">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Preview Warning Modal -->
+<div class="modal-bg" id="historyWarnModal">
+  <div class="modal">
+    <h3>Replace current exercise?</h3>
+    <p class="muted" id="historyWarnText">
+      You have an unsaved exercise in progress. Loading the history item will replace it.
+    </p>
+    <div class="actions">
+      <button class="ghost" id="histWarnCancel">Cancel</button>
+      <button class="ghost" id="histWarnIgnore">Ignore &amp; Load</button>
+      <button class="gold" id="histWarnSave">Save &amp; Load</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIG
+   ========================================================= */
+const GROQ_MODEL = 'openai/gpt-oss-120b';
+const GROQ_DAILY_LIMIT = 1000;
+
+const DEFAULTS = {
+  apiKey:   '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',
+  supaUrl:  'https://btydhxrhhmdqareawukq.supabase.co',
+  supaKey:  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0eWRoeHJoaG1kcWFyZWF3dWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxOTg3NjYsImV4cCI6MjEwNzc3NDc2Nn0.6VLg2ItMxWs_bGMT9d_qh-UU7aHTZ9Y61Y0rvkSOCh0',
+  syncCode: '3557682491'
+};
+
+const ENGLISH_LOCK = `CRITICAL LANGUAGE RULES:
+All German fields (q_de, a_de, de, task_de, text, dialog[].de, chunk.de, example) MUST be 100% German.
+Do NOT insert any English words, including numbers or age expressions.
+Write numbers as words: "zwanzig", not "20". Write "zwanzig Jahre alt", not "twenty years old".
+If you cannot produce a sentence without English, produce a shorter German sentence.
+Return JSON only, no markdown fences.`;
+
+const DEFAULT_PROMPTS = {
+  genQuestions: `You are a Goethe-Institut examiner. Topic: "{topic}". Level: {level}.
+{extra}
+Return {n} common, frequently asked questions for this topic and level.
+Respond with ONLY a JSON array. Each item:
+{
+  "q_de": "German question ending with ?",
+  "q_en": "English translation",
+  "a_de": "model answer in German at {level}, full sentence",
+  "a_en": "English of the answer",
+  "mistake": "one short line describing a typical learner error, or empty string"
+}
+${ENGLISH_LOCK}`,
+
+  chunks: `You are a German teacher. Topic: "{topic}". Level: {level}.
+{extra}
+Return 20 reusable German sentence chunks for this topic at {level}.
+Respond with ONLY a JSON array. Each item:
+{
+  "de": "German chunk with ___ for slots",
+  "en": "English gloss",
+  "example": "one complete filled-in example in German",
+  "mistake": "a common learner mistake, or empty"
+}
+${ENGLISH_LOCK}`,
+
+  listening: `You are a {level} German teacher. Topic: "{topic}". Level: {level}.
+{extra}
+Write ONE {format} in German at {level} level with {sentences} {unit}.
+Then produce {questions} comprehension questions IN GERMAN with English translations
+AND the correct answer in German + English for each question (so a grader can compare).
+
+If format = "paragraph", return:
+{
+  "text": "German paragraph...",
+  "questions": [{"de":"Frage?","en":"Question?","answer_de":"Antwort","answer_en":"Answer"}]
+}
+
+If format = "dialog", return:
+{
+  "dialog": [{"speaker":"A","de":"...","en":"..."}, {"speaker":"B","de":"...","en":"..."}],
+  "questions": [{"de":"Frage?","en":"Question?","answer_de":"Antwort","answer_en":"Answer"}]
+}
+${ENGLISH_LOCK}
+
+Vocabulary source:
+{vocab}`,
+
+  translateCheck: `You are a strict but fair language teacher. A student translated a text. Grade it.
+You will receive a JSON object with: source_text, target_lang (English or German), expected_answer, user_answer.
+Respond with ONLY a JSON object:
+{
+  "correct": true or false,
+  "corrected": "the ideal translation in the target_lang",
+  "explanation": "1-2 sentence explanation in English of what was wrong (or empty if correct)"
+}
+Rules: Be forgiving of typos, strict about grammar and word order. If the user answers in the wrong language, explicitly tell them.
+CRITICAL: Return JSON only.`,
+
+  listenCheck: `You are a German teacher grading a listening comprehension exam.
+You will receive a JSON object with: questions (each has de, en, answer_de), user_answers (array of strings).
+Respond with ONLY a JSON array, one item per question, in the same order:
+[
+  {
+    "correct": true or false,
+    "corrected": "the best German answer",
+    "explanation": "1 sentence in English"
+  }
+]
+Grade semantics, not exact string match.
+${ENGLISH_LOCK}`,
+
+  askAI: `You are a German grammar tutor. A student is learning word order and grammar.
+You will receive a JSON object: sentence_de (the correct answer), user_attempt (their attempt).
+
+Your job is to identify the EXACT difference between their attempt and the correct sentence. Do not give a generic lecture about word order unless the word order is actually wrong.
+
+Respond with ONLY a JSON object:
+{
+  "verdict": "correct" | "needs_adjustment" | "wrong",
+  "corrected": "the correct sentence",
+  "explanation": "1-2 sentences in English explaining the SPECIFIC mistake they made. (e.g., 'You used the informal pronoun du instead of the formal Sie.' or 'The verb sprechen needs to be at the end in this clause.')"
+}
+CRITICAL: Do not just say 'verb is in second position' unless that is the actual mistake. Focus on what they got wrong.
+Return JSON only.`,
+
+  chatPartner: `You are playing the role of a native German speaker in the following scenario: "{scenario}". The student is at level {level}.
+Your conversation mode is: {mode}.
+
+Mode behaviours:
+- "teacher": actively correct the student's German mistakes (briefly, in English) before replying. Teach gently.
+- "examiner": be formal, evaluate the student's responses like an oral exam (B1/B2/C1 style). Ask exam-style questions. Do not correct mid-conversation; just respond appropriately and evaluate.
+- "normal": act naturally, do NOT correct grammar. Just have a real conversation.
+
+Respond with ONLY a JSON object:
+{
+  "ai_de": "Your reply in German (1-2 sentences). Ask a question to keep the conversation going.",
+  "ai_en": "English translation of your reply for the student.",
+  "correction": "If mode=teacher, a short English correction of the student's last message. Otherwise empty string."
+}
+${ENGLISH_LOCK}`
+};
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const LS_KEY = 'germanTracker_v15';
+const DEFAULT_TOPICS = ["Personal Identity & Background","Living & Home","Shopping & Daily Commerce","Work & Daily Tasks","Free Time & Hobbies","Health & Doctor Visits","Directions & City Travel","Past Events & Plans"];
+const LEVELS = ['A1','A2','B1','B2','C1'];
+const PHASES = ['chunks','qa','speak'];
+
+let state = {
+  cards: [], sessions: [], calendar: {},
+  topics: [...DEFAULT_TOPICS], topicLevels: {},
+  activeTopic: DEFAULT_TOPICS[0],
+  activeTab: 'study',
+  activeQuizSub: 'quiz-translate',
+  activeCardTopic: 'all',
+  activeCardType: 'all',
+  activeCardLevel: 'all',
+  cardSort: 'topic',
+  calMonth: null, calYear: null,
+  apiKey: DEFAULTS.apiKey, supaUrl: DEFAULTS.supaUrl, supaKey: DEFAULTS.supaKey, syncCode: DEFAULTS.syncCode,
+  scores: { trans:{c:0,t:0}, scramble:{c:0,t:0} },
+  prompts: { ...DEFAULT_PROMPTS },
+  chat: [], notes: [], exercises: [],
+  usage: { day:'', count:0, tokensIn:0, tokensOut:0 },
+  autoplaySpeed: 1, autoplayPause: 1.2
+};
+
+try{
+  const local = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+  if(local){
+    state = { ...state, ...local,
+      scores:  { ...state.scores,  ...(local.scores||{}) },
+      prompts: { ...state.prompts, ...(local.prompts||{}) },
+      chat: local.chat || [], notes: local.notes || [], exercises: local.exercises || [],
+      topicLevels: local.topicLevels || {}, usage: { ...state.usage, ...(local.usage||{}) }
+    };
+    if(!state.apiKey)   state.apiKey   = DEFAULTS.apiKey;
+    if(!state.supaUrl)  state.supaUrl  = DEFAULTS.supaUrl;
+    if(!state.supaKey)  state.supaKey  = DEFAULTS.supaKey;
+    if(!state.syncCode) state.syncCode = DEFAULTS.syncCode;
+  }
+}catch(e){}
+
+function saveLocal(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)); }
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function localDateKey(d = new Date()){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+let toastT;
+function toast(msg, kind=''){ const t=document.getElementById('toast'); t.textContent=msg; t.className='show '+kind; clearTimeout(toastT); toastT=setTimeout(()=>t.className='',2500); }
+function fillTemplate(tpl, vars){ return tpl.replace(/\{(\w+)\}/g, (_, k)=> vars[k] !== undefined ? vars[k] : `{${k}}`); }
+function sanitizeHtml(html){ const d=document.createElement('div'); d.innerHTML=html; d.querySelectorAll('script,iframe,object,embed').forEach(e=>e.remove()); d.querySelectorAll('*').forEach(el=>{ [...el.attributes].forEach(attr=>{ if(attr.name.startsWith('on')) el.removeAttribute(attr.name); if((attr.name==='href'||attr.name==='src') && /^javascript:/i.test(attr.value)) el.removeAttribute(attr.name); }); }); return d.innerHTML; }
+
+/* =========================================================
+   USAGE TRACKER
+   ========================================================= */
+function todayKey(){ return localDateKey(); }
+function ensureUsageDay(){
+  if(state.usage.day!==todayKey()){
+    state.usage = { day:todayKey(), count:0, tokensIn:0, tokensOut:0 };
+    saveLocal();
+  }
+}
+function bumpUsage(tin=0, tout=0){
+  ensureUsageDay();
+  state.usage.count++;
+  state.usage.tokensIn += tin;
+  state.usage.tokensOut += tout;
+  saveLocal();
+  renderStatusPill();
+}
+function renderStatusPill(){
+  ensureUsageDay();
+  const pill = document.getElementById('statusPill');
+  const n = state.usage.count, pct = Math.min(100, (n / GROQ_DAILY_LIMIT) * 100);
+  pill.querySelector('.usage').textContent = `${n}/${GROQ_DAILY_LIMIT}`;
+  pill.classList.remove('usage-warn','usage-danger');
+  if(pct>=90) pill.classList.add('usage-danger'); else if(pct>=70) pill.classList.add('usage-warn');
+  document.getElementById('panelUsageCount').textContent = n;
+  document.getElementById('panelUsageFill').style.width = pct + '%';
+  document.getElementById('panelUsageFill').className = 'usage-bar-fill' + (pct>=90?' danger':pct>=70?' warn':'');
+}
+
+/* =========================================================
+   SUPABASE
+   ========================================================= */
+let supabaseReady = false;
+function initSupabase(){ supabaseReady = !!(state.supaUrl && state.supaKey && state.syncCode); document.getElementById('statusPill').classList.toggle('synced', supabaseReady); }
+function markSync(status){ const pill=document.getElementById('statusPill'); pill.classList.remove('synced','err'); if(status==='ok')pill.classList.add('synced'); if(status==='err')pill.classList.add('err'); }
+
+async function sb(method, path, body, extraHeaders = {}){
+  if(!supabaseReady) throw new Error('Supabase not configured');
+  const r = await fetch(`${state.supaUrl}/rest/v1/${path}`, {
+    method, headers: { 'apikey': state.supaKey, 'Authorization': `Bearer ${state.supaKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation', ...extraHeaders },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if(!r.ok){ const t = await r.text(); throw new Error(`Supabase ${r.status}: ${t.slice(0,200)}`); }
+  return r.status === 204 ? null : r.json();
+}
+
+async function ensureUserExists() {
+  if(!supabaseReady) return;
+  try {
+    await sb('POST', 'gt_user', { sync_code: state.syncCode }, { 'Prefer': 'resolution=ignore-duplicates,return=minimal' });
+  } catch(e) { console.warn('Could not verify user', e); }
+}
+
+async function pullAll(){
+  if(!supabaseReady) return;
+  markSync('sync');
+  try{
+    await ensureUserExists();
+    const c = encodeURIComponent(state.syncCode);
+    const [cards, sessions, cal, topics, settings, scores, notes, exercises] = await Promise.all([
+      sb('GET', `gt_cards?sync_code=eq.${c}&select=*`), sb('GET', `gt_sessions?sync_code=eq.${c}&select=*&order=started_at.desc`),
+      sb('GET', `gt_calendar?sync_code=eq.${c}&select=*`), sb('GET', `gt_topics?sync_code=eq.${c}&select=*&order=position.asc`),
+      sb('GET', `gt_settings?sync_code=eq.${c}&select=*`), sb('GET', `gt_scores?sync_code=eq.${c}&select=*`),
+      sb('GET', `gt_notes?sync_code=eq.${c}&select=*&order=updated_at.desc`),
+      sb('GET', `gt_exercise_history?sync_code=eq.${c}&select=*&order=created_at.desc&limit=500`)
+    ]);
+
+    state.cards = (cards||[]).map(c=>({ id:c.id, topic:c.topic, qDe:c.q_de, qEn:c.q_en, aDe:c.a_de, aEn:c.a_en, box:c.box, due:new Date(c.due).getTime(), reps:c.reps }));
+    state.sessions = (sessions||[]).map(s=>({ start:s.started_at, end:s.ended_at, seconds:s.seconds }));
+    state.calendar = {}; (cal||[]).forEach(r=>{ if(r.marked) state.calendar[r.day] = true; });
+    if(topics && topics.length){
+      state.topics = topics.map(t=>t.name); state.topicLevels = {};
+      topics.forEach(t=>{ state.topicLevels[t.name] = t.level_dots || { A1:false, A2:false, B1:false, B2:false, C1:false }; });
+      if(!state.activeTopic || !state.topics.includes(state.activeTopic)){ state.activeTopic = state.topics[0]; }
+    }
+    if(settings && settings[0]){ state.prompts = { ...DEFAULT_PROMPTS, ...(settings[0].prompts||{}) }; }
+    if(scores && scores[0]){ state.scores = { trans:{ c:scores[0].trans_correct, t:scores[0].trans_total }, scramble:{ c:scores[0].scramble_correct, t:scores[0].scramble_total } }; }
+    state.notes = (notes||[]).map(n=>({ id:n.id, title:n.title, body:n.body_html, created:new Date(n.created_at).getTime(), updated:new Date(n.updated_at).getTime() }));
+    state.exercises = (exercises||[]).map(e=>({ id:e.id, type:e.type, topic:e.topic, level:e.level, payload:e.payload, created:new Date(e.created_at).getTime() }));
+
+    saveLocal(); rerenderAll(); markSync('ok');
+  }catch(e){ console.error('Pull failed:', e); markSync('err'); }
+}
+
+async function pushCard(card){ if(!supabaseReady)return; try{ await sb('POST','gt_cards', { id:card.id, sync_code:state.syncCode, topic:card.topic, q_de:card.qDe, q_en:card.qEn, a_de:card.aDe, a_en:card.aEn, box:card.box, due:new Date(card.due).toISOString(), reps:card.reps }, {'Prefer':'resolution=merge-duplicates,return=minimal'}); }catch(e){ console.error('Card push fail', e); } }
+async function deleteCardRemote(id){ if(!supabaseReady)return; try{ await sb('DELETE', `gt_cards?id=eq.${encodeURIComponent(id)}`); }catch(e){} }
+async function pushSession(s){ if(!supabaseReady)return; try{ await sb('POST','gt_sessions', { sync_code:state.syncCode, started_at:s.start, ended_at:s.end, seconds:s.seconds }, {'Prefer':'return=minimal'}); }catch(e){} }
+async function pushCalendar(day, marked){ if(!supabaseReady)return; try{ await sb('POST','gt_calendar', { sync_code:state.syncCode, day, marked }, {'Prefer':'resolution=merge-duplicates,return=minimal'}); }catch(e){} }
+async function pushTopics(){
+  if(!supabaseReady)return;
+  try{
+    await sb('DELETE', `gt_topics?sync_code=eq.${encodeURIComponent(state.syncCode)}`);
+    if(state.topics.length){ await sb('POST','gt_topics', state.topics.map((name,i)=>({ sync_code:state.syncCode, name, position:i, level_dots:state.topicLevels[name]||{} })), {'Prefer':'return=minimal'}); }
+  }catch(e){ console.error('Topics push fail', e); }
+}
+async function pushTopicLevels(topic){ if(!supabaseReady)return; try{ await sb('PATCH', `gt_topics?sync_code=eq.${encodeURIComponent(state.syncCode)}&name=eq.${encodeURIComponent(topic)}`, { level_dots:state.topicLevels[topic]||{} }); }catch(e){} }
+async function pushSettings(){ if(!supabaseReady)return; try{ await sb('POST','gt_settings', { sync_code:state.syncCode, prompts:state.prompts, target_level:document.getElementById('targetLevel')?.value||'A2' }, {'Prefer':'resolution=merge-duplicates,return=minimal'}); }catch(e){} }
+async function pushScores(){ if(!supabaseReady)return; try{ await sb('POST','gt_scores', { sync_code:state.syncCode, trans_correct:state.scores.trans.c, trans_total:state.scores.trans.t, scramble_correct:state.scores.scramble.c, scramble_total:state.scores.scramble.t }, {'Prefer':'resolution=merge-duplicates,return=minimal'}); }catch(e){} }
+async function pushNote(note){ if(!supabaseReady)return; try{ await sb('POST','gt_notes', { id:note.id, sync_code:state.syncCode, title:note.title, body_html:note.body, updated_at:new Date().toISOString() }, {'Prefer':'resolution=merge-duplicates,return=minimal'}); }catch(e){} }
+async function deleteNoteRemote(id){ if(!supabaseReady)return; try{ await sb('DELETE', `gt_notes?id=eq.${encodeURIComponent(id)}`); }catch(e){} }
+async function pushExercise(ex){
+  if(!supabaseReady)return;
+  try{
+    await sb('POST','gt_exercise_history', { id:ex.id, sync_code:state.syncCode, type:ex.type, topic:ex.topic, level:ex.level, payload:ex.payload }, {'Prefer':'return=minimal'});
+    const all = state.exercises.filter(e=>e.type===ex.type).sort((a,b)=>b.created - a.created);
+    if(all.length > 100){ const toDelete = all.slice(100); for(const d of toDelete){ await sb('DELETE', `gt_exercise_history?id=eq.${encodeURIComponent(d.id)}`); } state.exercises = state.exercises.filter(e=>!toDelete.find(d=>d.id===e.id)); }
+  }catch(e){ console.error('Exercise push fail', e); }
+}
+async function deleteExerciseRemote(id){ if(!supabaseReady)return; try{ await sb('DELETE', `gt_exercise_history?id=eq.${encodeURIComponent(id)}`); }catch(e){} }
+async function deleteTopicRemote(name){ if(!supabaseReady)return; try{ await sb('DELETE', `gt_topics?sync_code=eq.${encodeURIComponent(state.syncCode)}&name=eq.${encodeURIComponent(name)}`); }catch(e){} }
+
+function save(){ saveLocal(); }
+
+/* =========================================================
+   TAB PERSISTENCE
+   ========================================================= */
+function activateTab(tabName){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabName));
+  document.querySelectorAll('section').forEach(x=>x.classList.toggle('active', x.id===tabName));
+  state.activeTab = tabName; saveLocal();
+  if(tabName==='chat') renderStatusPill();
+  if(tabName==='cards') renderCards();
+  if(tabName==='quiz') renderQuizHistory();
+}
+function activateQuizSub(sub){
+  document.querySelectorAll('.quiz-tab').forEach(x=>x.classList.toggle('active', x.dataset.sub===sub));
+  document.querySelectorAll('.subpanel').forEach(x=>x.classList.toggle('active', x.id===sub));
+  state.activeQuizSub = sub; saveLocal();
+  renderQuizHistory();
+}
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = () => activateTab(t.dataset.tab);
+});
+document.querySelectorAll('.quiz-tab').forEach(s=>{
+  s.onclick = () => activateQuizSub(s.dataset.sub);
+});
+
+/* =========================================================
+   TTS
+   ========================================================= */
+let isManualSpeaking = false, isAutoplayRunning = false;
+function speak(text, lang='de-DE', rateOverride=null){
+  return new Promise(resolve=>{
+    if(!('speechSynthesis' in window)){ resolve(); return; }
+    if(isAutoplayRunning) { resolve(); return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.rate = rateOverride !== null ? rateOverride : state.autoplaySpeed;
+    u.onend = () => { isManualSpeaking = false; resolve(); };
+    u.onerror = () => { isManualSpeaking = false; resolve(); };
+    const v = speechSynthesis.getVoices().find(v=>v.lang.startsWith(lang.slice(0,2)));
+    if(v) u.voice = v;
+    isManualSpeaking = true; speechSynthesis.speak(u);
+  });
+}
+function cancelSpeech(){ if('speechSynthesis' in window) speechSynthesis.cancel(); isManualSpeaking=false; }
+
+/* =========================================================
+   TIMER
+   ========================================================= */
+let timer = { running:false, start:null, elapsed:0, tick:null, _base:0 };
+function fmt(s){ const h=String(Math.floor(s/3600)).padStart(2,'0'), m=String(Math.floor(s%3600/60)).padStart(2,'0'), sec=String(s%60).padStart(2,'0'); return `${h}:${m}:${sec}`; }
+function renderTimer(){ const t=fmt(timer.elapsed); document.getElementById('panelTimer').textContent=t; document.getElementById('statusPill').querySelector('.timer-text').textContent = timer.elapsed>0?t.slice(0,5):'00:00'; }
+document.getElementById('panelStart').onclick = () => {
+  if(timer.running) return; timer.running=true; timer.start=Date.now();
+  timer.tick=setInterval(()=>{ timer.elapsed=Math.floor((Date.now()-timer.start)/1000)+timer._base; renderTimer(); },500); renderTimer();
+};
+document.getElementById('panelPause').onclick = () => { if(!timer.running)return; clearInterval(timer.tick); timer._base=timer.elapsed; timer.running=false; renderTimer(); };
+document.getElementById('panelStop').onclick = async () => {
+  if(timer.running) clearInterval(timer.tick);
+  if(timer.elapsed<5){ toast('Too short','err'); return; }
+  const now=new Date(); const s={ start:new Date(now.getTime()-timer.elapsed*1000).toISOString(), end:now.toISOString(), seconds:timer.elapsed };
+  state.sessions.push(s); state.calendar[localDateKey(now)]=true; save();
+  await pushSession(s); await pushCalendar(localDateKey(now),true);
+  renderStats(); renderCalendar();
+  timer={running:false,start:null,elapsed:0,tick:null,_base:0}; renderTimer(); toast('Session saved','ok');
+};
+function getDaySeconds(k){ return state.sessions.filter(s=>localDateKey(new Date(s.start))===k).reduce((a,s)=>a+s.seconds,0); }
+function computeStreak(){ let s=0,d=new Date(); while(true){ if(state.calendar[localDateKey(d)]){s++;d.setDate(d.getDate()-1);}else break; } return s; }
+
+function renderStats(){
+  const total=state.sessions.reduce((a,s)=>a+s.seconds,0), green=Object.values(state.calendar).filter(Boolean).length, todaySec=getDaySeconds(localDateKey());
+  document.getElementById('stats').innerHTML = `<div class="stat"><b>${fmt(total)}</b><small>Total</small></div><div class="stat"><b>${fmt(todaySec)}</b><small>Today</small></div><div class="stat"><b>${green}</b><small>Days</small></div><div class="stat"><b>${computeStreak()}</b><small>Streak</small></div><div class="stat"><b>${state.cards.length}</b><small>Cards</small></div>`;
+}
+
+/* =========================================================
+   TOPIC PROGRESS
+   ========================================================= */
+function renderTopicProgress(){
+  const el=document.getElementById('topicProgressList');
+  if(!state.topics.length){ el.innerHTML='<p class="muted">No topics yet.</p>'; return; }
+  el.innerHTML = state.topics.map(t=>{
+    const levels = state.topicLevels[t] || {};
+    const levelDots = LEVELS.map(l=>`<div class="dot ${levels[l]?'level-done':''}" title="${l}" onclick="toggleTopicLevel('${escapeHtml(t)}','${l}')">${l}</div>`).join('');
+    const phaseDots = PHASES.map(p=>`<div class="dot ${levels['_'+p]?'done':''}" title="${p}" onclick="toggleTopicPhase('${escapeHtml(t)}','${p}')">${p}</div>`).join('');
+    return `<div class="topic-progress">
+      <span class="tp-name">${escapeHtml(t)}</span>
+      <div class="tp-group">${levelDots}</div>
+      <div class="tp-sep"></div>
+      <div class="tp-group">${phaseDots}</div>
+    </div>`;
+  }).join('');
+}
+window.toggleTopicLevel = async (topic, level) => { if(!state.topicLevels[topic]) state.topicLevels[topic]={}; state.topicLevels[topic][level]=!state.topicLevels[topic][level]; save(); renderTopicProgress(); await pushTopicLevels(topic); };
+window.toggleTopicPhase = async (topic, phase) => { if(!state.topicLevels[topic]) state.topicLevels[topic]={}; const k='_'+phase; state.topicLevels[topic][k]=!state.topicLevels[topic][k]; save(); renderTopicProgress(); await pushTopicLevels(topic); };
+
+/* =========================================================
+   CALENDAR
+   ========================================================= */
+let calYear, calMonth;
+function renderCalendar(){
+  const now=new Date();
+  if(state.calYear===null) state.calYear=now.getFullYear();
+  if(state.calMonth===null) state.calMonth=now.getMonth();
+  calYear=state.calYear; calMonth=state.calMonth;
+  const first=new Date(calYear,calMonth,1), days=new Date(calYear,calMonth+1,0).getDate(), startDow=(first.getDay()+6)%7;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthLabel').textContent = `${months[calMonth]} ${calYear}`;
+  const cal=document.getElementById('calendar'); cal.innerHTML='';
+  ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d=>{ const el=document.createElement('div'); el.className='cal-head'; el.textContent=d; cal.appendChild(el); });
+  for(let i=0;i<startDow;i++){ const e=document.createElement('div'); e.className='cal-day empty'; cal.appendChild(e); }
+  const todayKey=localDateKey();
+  for(let d=1;d<=days;d++){
+    const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el=document.createElement('div'); el.className='cal-day';
+    const secs=getDaySeconds(key), timeStr=secs>0?fmt(secs).slice(0,5):'';
+    el.innerHTML=`<span class="dnum">${d}</span>${timeStr?`<span class="dtime">${timeStr}</span>`:''}`;
+    if(state.calendar[key]) el.classList.add('done');
+    if(key===todayKey) el.classList.add('today');
+    el.onclick = async () => { state.calendar[key]=!state.calendar[key]; save(); renderCalendar(); renderStats(); await pushCalendar(key,state.calendar[key]); };
+    cal.appendChild(el);
+  }
+}
+document.getElementById('prevMonth').onclick = ()=>{ state.calMonth--; if(state.calMonth<0){state.calMonth=11;state.calYear--;} saveLocal(); renderCalendar(); };
+document.getElementById('nextMonth').onclick = ()=>{ state.calMonth++; if(state.calMonth>11){state.calMonth=0;state.calYear++;} saveLocal(); renderCalendar(); };
+
+/* =========================================================
+   TOPICS
+   ========================================================= */
+function renderTopics(){
+  const chips=document.getElementById('topicChips'); chips.innerHTML='';
+  state.topics.forEach(t=>{
+    const el=document.createElement('span'); el.className='chip'+(t===state.activeTopic?' active':''); el.textContent=t;
+    el.onclick=()=>{ state.activeTopic=t; save(); renderTopics(); };
+    el.oncontextmenu=async(e)=>{ e.preventDefault(); if(!confirm(`Delete topic "${t}"?`))return; state.topics=state.topics.filter(x=>x!==t); if(state.activeTopic===t)state.activeTopic=state.topics[0]||''; save(); renderTopics(); updateTopicSelects(); await deleteTopicRemote(t); };
+    chips.appendChild(el);
+  });
+}
+document.getElementById('addTopicBtn').onclick = async () => {
+  const v=document.getElementById('newTopicInput').value.trim(); if(!v)return;
+  if(state.topics.includes(v)){ toast('Exists','err'); return; }
+  state.topics.push(v); state.activeTopic=v; state.topicLevels[v]={}; save(); renderTopics(); updateTopicSelects(); document.getElementById('newTopicInput').value=''; await pushTopics();
+};
+
+/* =========================================================
+   GROQ CALL
+   ========================================================= */
+async function groqCall(prompt, {json=false, kind='generic'} = {}){
+  if(!state.apiKey) throw new Error('No API key.');
+  ensureUsageDay();
+  const body = { model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.6, ...(json ? { response_format: { type: 'json_object' } } : {}) };
+  const entry = { id:uid(), ts:Date.now(), type:'user', kind, model:GROQ_MODEL, prompt, raw:'', parsed:null };
+  state.chat.unshift(entry); state.chat = state.chat.slice(0,200); renderChat(); save();
+  let r;
+  try{ r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method:'POST', headers:{ 'Authorization':`Bearer ${state.apiKey}`, 'Content-Type':'application/json' }, body: JSON.stringify(body) }); }
+  catch(netErr){ entry.type='error'; entry.error=String(netErr); renderChat(); bumpUsage(); throw netErr; }
+  if(!r.ok){ const errText=(await r.text()).slice(0,500); entry.type='error'; entry.error=errText; renderChat(); bumpUsage(); throw new Error('Groq: '+errText.slice(0,250)); }
+  const data = await r.json(); const raw = data.choices?.[0]?.message?.content || ''; const usage = data.usage || {};
+  bumpUsage(usage.prompt_tokens||0, usage.completion_tokens||0);
+  let parsed = null; if(json){ try{ parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }catch(e){} }
+  entry.raw=raw; entry.parsed=parsed; entry.type='ai'; renderChat(); save();
+  return raw;
+}
+
+/* =========================================================
+   CHAT LOG (local only, no Supabase)
+   ========================================================= */
+function renderChat(){
+  const el=document.getElementById('chatLog'); document.getElementById('chatCount').textContent=`${state.chat.length}`;
+  if(!state.chat.length){ el.innerHTML='<p class="muted">No requests yet.</p>'; return; }
+  el.innerHTML = state.chat.map(c=>{
+    const time=new Date(c.ts).toLocaleString(), cls=c.type==='error'?'error':(c.type==='ai'?'ai':'user'), label=c.type==='error'?'ERROR':(c.type==='ai'?'GROQ':'YOU');
+    return `<div class="chat-msg ${cls}"><div class="meta">${label} · ${time} · ${c.kind||''} · ${c.model||''}</div>
+      <details open><summary>Raw Request</summary><pre>${escapeHtml(c.prompt||'')}</pre></details>
+      ${c.raw?`<details><summary>Raw Response</summary><pre>${escapeHtml(c.raw)}</pre></details>`:''}
+      ${c.parsed?`<details><summary>Parsed JSON</summary><pre>${escapeHtml(JSON.stringify(c.parsed,null,2))}</pre></details>`:''}
+      ${c.error?`<details><summary>Error</summary><pre>${escapeHtml(c.error)}</pre></details>`:''}
+    </div>`;
+  }).join('');
+}
+document.getElementById('clearChat').onclick = () => { if(!confirm('Clear?'))return; state.chat=[]; save(); renderChat(); };
+document.getElementById('exportChat').onclick = () => { const blob=new Blob([JSON.stringify(state.chat,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`groq-chat-${localDateKey()}.json`; a.click(); };
+
+/* =========================================================
+   GENERATE TAB
+   ========================================================= */
+let genMode='qa', lastResults=[];
+document.querySelectorAll('.mode-picker button').forEach(b=>{
+  b.onclick = () => { document.querySelectorAll('.mode-picker button').forEach(x=>{x.classList.remove('active','gold');x.classList.add('ghost');}); b.classList.remove('ghost'); b.classList.add('active','gold'); genMode=b.dataset.mode; loadPromptIntoBox(); };
+});
+function promptKeyForMode(mode){ return mode==='qa'?'genQuestions':'chunks'; }
+function loadPromptIntoBox(){ document.getElementById('genPromptBox').value = state.prompts[promptKeyForMode(genMode)]; }
+document.getElementById('saveAsDefaultBtn').onclick = async () => { state.prompts[promptKeyForMode(genMode)]=document.getElementById('genPromptBox').value; save(); await pushSettings(); renderPromptsEditor(); toast('Saved as default','ok'); };
+
+document.getElementById('generateBtn').onclick = async () => {
+  const level=document.getElementById('targetLevel').value, nRaw=document.getElementById('numQuestions').value.trim(), extra=document.getElementById('promptInstructions').value.trim(), topic=state.activeTopic;
+  const n = nRaw==='' ? 'as many as typically exist for this topic and level' : `EXACTLY ${nRaw}`;
+  const extraBlock = extra ? `Extra instructions: ${extra}` : '';
+  const prompt = fillTemplate(document.getElementById('genPromptBox').value, { topic, level, n, extra: extraBlock });
+  const btn=document.getElementById('generateBtn'); btn.disabled=true; btn.textContent='...';
+  try{
+    const raw = await groqCall(prompt, {json:true, kind:genMode});
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    const arr = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : Object.values(parsed).find(v=>Array.isArray(v)) || [];
+    if(!arr.length) throw new Error('No array in JSON.');
+    const englishDetector = /\b(the|and|is|are|you|your|what|where|when|twenty|thirty|forty|fifty|hundred|thousand|my name|I am)\b/i;
+
+    if(genMode==='qa'){
+      lastResults = arr.map(r=>({ id:uid(), kind:'qa', topic, level, de:String(r.q_de||'').trim(), en:String(r.q_en||'').trim(), aDe:String(r.a_de||'').trim(), aEn:String(r.a_en||'').trim(), mistake:String(r.mistake||'').trim(), englishLeak:englishDetector.test(r.q_de||'') || englishDetector.test(r.a_de||'') })).filter(r=>r.de && r.en);
+    } else {
+      lastResults = arr.map(r=>({ id:uid(), kind:'chunk', topic, level, de:String(r.de||'').trim(), en:String(r.en||'').trim(), example:String(r.example||'').trim(), englishLeak:englishDetector.test(r.de||'') || englishDetector.test(r.example||'') })).filter(r=>r.de && r.en);
+    }
+    if(lastResults.length){
+      const ex={ id:uid(), type:genMode, topic, level, payload:{ items:lastResults }, created:Date.now() };
+      state.exercises.unshift(ex); await pushExercise(ex);
+    }
+    renderResults(); document.getElementById('genResultCard').style.display='block'; toast(`${lastResults.length} results`,'ok');
+  }catch(e){ toast(e.message,'err'); } finally{ btn.disabled=false; btn.textContent='Send'; }
+};
+
+function renderResults(){
+  const box=document.getElementById('qaResults'), title=document.getElementById('genResultTitle'), addAll=document.getElementById('addAllBtn');
+  if(!lastResults.length){ box.innerHTML='<p class="muted">Empty.</p>'; return; }
+  title.textContent = genMode==='qa'?'Generated Q&A':'Generated Chunks'; addAll.style.display='';
+  box.innerHTML = lastResults.map(r=>{
+    const leak = r.englishLeak ? `<div class="english-warning" style="color:var(--warn);font-size:.72rem;margin-top:4px">English words detected.</div>` : '';
+    if(genMode==='qa'){ return `<div class="qa-card" data-id="${r.id}"><div class="qa-text"><div class="qa-de">${escapeHtml(r.de)}</div><div class="qa-en">${escapeHtml(r.en)}</div><div class="qa-ans">${escapeHtml(r.aDe)}<br><span class="muted">${escapeHtml(r.aEn)}</span></div>${leak}</div><div class="qa-actions"><button class="ghost tiny" data-act="speak">🔊</button><button class="ghost tiny" data-act="send">→</button><button class="ghost tiny" data-act="del">✕</button></div></div>`; }
+    return `<div class="chunk-card" data-id="${r.id}"><div class="chunk-de">${escapeHtml(r.de)}</div><div class="chunk-en">${escapeHtml(r.en)}</div>${r.example?`<div class="chunk-ex">${escapeHtml(r.example)}</div>`:''}${leak}<div style="margin-top:6px;display:flex;gap:6px"><button class="ghost tiny" data-act="speak">🔊</button><button class="ghost tiny" data-act="send">→</button><button class="ghost tiny" data-act="del">✕</button></div></div>`;
+  }).join('');
+  box.querySelectorAll('[data-id]').forEach(el=>{
+    const id=el.dataset.id, item=lastResults.find(x=>x.id===id);
+    el.querySelectorAll('[data-act]').forEach(b=>{ b.onclick=async(ev)=>{ ev.stopPropagation(); const act=b.dataset.act; if(act==='speak')speak(item.de||'','de-DE',0.9); else if(act==='del'){ lastResults=lastResults.filter(x=>x.id!==id); renderResults(); } else if(act==='send'){ await sendToCards(item); lastResults=lastResults.filter(x=>x.id!==id); renderResults(); } }; });
+  });
+}
+async function sendToCards(item){
+  if(item.kind==='qa'){ const c={id:uid(),topic:item.topic,level:item.level,type:'qa',qDe:item.de,qEn:item.en,aDe:item.aDe,aEn:item.aEn,box:0,due:Date.now(),reps:0}; state.cards.push(c); save(); renderCards(); updateTopicSelects(); await pushCard(c); }
+  else { const c={id:uid(),topic:item.topic,level:item.level,type:'chunk',qDe:item.example||item.de,qEn:item.en,aDe:item.de,aEn:'',box:0,due:Date.now(),reps:0}; state.cards.push(c); save(); renderCards(); updateTopicSelects(); await pushCard(c); }
+  toast('Sent to cards','ok');
+}
+document.getElementById('speakAllBtn').onclick = ()=>{ if(lastResults.length)speak(lastResults.map(r=>r.de).filter(Boolean).join('. '),'de-DE',0.85); };
+document.getElementById('clearResultsBtn').onclick = ()=>{ if(!confirm('Clear?'))return; lastResults=[]; renderResults(); document.getElementById('genResultCard').style.display='none'; };
+document.getElementById('addAllBtn').onclick = async ()=>{ if(!lastResults.length)return; for(const r of lastResults){ await sendToCards(r); } lastResults=[]; renderResults(); document.getElementById('genResultCard').style.display='none'; toast('All added','ok'); };
+
+/* =========================================================
+   FLASHCARDS (new: filter/sort + practical pool)
+   ========================================================= */
+let currentCard=null, currentCardPool=[], currentCardIdx=0;
+
+function filteredCards(){
+  let pool = [...state.cards];
+  if(state.activeCardType!=='all') pool = pool.filter(c=> (c.type||'qa')===state.activeCardType);
+  if(state.activeCardTopic!=='all') pool = pool.filter(c=>c.topic===state.activeCardTopic);
+  if(state.activeCardLevel!=='all') pool = pool.filter(c=> (c.level||'A2')===state.activeCardLevel);
+  const s = state.cardSort;
+  pool.sort((a,b)=>{
+    if(s==='topic') return (a.topic||'').localeCompare(b.topic||'');
+    if(s==='level') return LEVELS.indexOf(a.level||'A2') - LEVELS.indexOf(b.level||'A2');
+    if(s==='type') return (a.type||'qa').localeCompare(b.type||'qa');
+    if(s==='newest') return (b.created||0) - (a.created||0);
+    return 0;
+  });
+  return pool;
+}
+
+function renderCardFilters(){
+  const topicSel=document.getElementById('cardTopicFilter');
+  const topics=['all',...new Set(state.cards.map(c=>c.topic).filter(Boolean))];
+  if(topicSel.dataset.opts!==topics.join('|')){
+    topicSel.innerHTML=topics.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t==='all'?'All topics':t)}</option>`).join('');
+    topicSel.dataset.opts=topics.join('|');
+  }
+  topicSel.value=state.activeCardTopic;
+  document.getElementById('cardTypeFilter').value=state.activeCardType;
+  document.getElementById('cardLevelFilter').value=state.activeCardLevel;
+  document.getElementById('cardSort').value=state.cardSort;
+}
+
+function renderCards(){
+  renderCardFilters();
+  const pool=filteredCards(); currentCardPool=pool;
+  if(currentCardIdx>=pool.length) currentCardIdx=0;
+  currentCard = pool[currentCardIdx] || null;
+  showCurrentCard();
+}
+
+function showCurrentCard(){
+  const fc=document.getElementById('flashcard'); fc.classList.remove('flipped');
+  const q=document.getElementById('cardQ'), qen=document.getElementById('cardQEn'), a=document.getElementById('cardA'), aen=document.getElementById('cardAEn'), badge=document.getElementById('cardTopicBadge');
+  if(!currentCard){ q.textContent='No cards yet'; qen.textContent=''; a.textContent=''; aen.textContent=''; badge.textContent=''; document.getElementById('cardCounter').textContent='0 / 0'; renderList(); return; }
+  q.textContent=currentCard.qDe||''; qen.textContent=currentCard.qEn||''; a.textContent=currentCard.aDe||''; aen.textContent=currentCard.aEn||'';
+  badge.textContent = `${currentCard.topic||''} · ${currentCard.level||'A2'} · ${(currentCard.type||'qa').toUpperCase()}`;
+  document.getElementById('cardCounter').textContent = `${currentCardIdx + 1} / ${currentCardPool.length}`;
+  renderList();
+}
+
+(function initCardFlip(){
+  const wrap=document.getElementById('flashcardWrap'), fc=document.getElementById('flashcard'); let downX=0,downY=0,downTime=0;
+  function onDown(x,y){ downX=x; downY=y; downTime=Date.now(); }
+  function onUp(x,y){ const moved=Math.hypot(x-downX,y-downY), elapsed=Date.now()-downTime; if(moved<8 && elapsed<500) fc.classList.toggle('flipped'); }
+  wrap.addEventListener('touchstart',e=>{ const t=e.touches[0]; onDown(t.clientX,t.clientY); },{passive:true});
+  wrap.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; onUp(t.clientX,t.clientY); },{passive:true});
+  wrap.addEventListener('mousedown',e=>onDown(e.clientX,e.clientY));
+  wrap.addEventListener('mouseup',e=>onUp(e.clientX,e.clientY));
+})();
+
+document.addEventListener('keydown', (e)=>{ if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return; if(state.activeTab!=='cards')return; if(e.code==='Space'){ e.preventDefault(); document.getElementById('flashcard').classList.toggle('flipped'); } });
+
+document.getElementById('prevCard').onclick = ()=>{ if(!currentCardPool.length)return; currentCardIdx=(currentCardIdx-1+currentCardPool.length)%currentCardPool.length; currentCard=currentCardPool[currentCardIdx]; showCurrentCard(); };
+document.getElementById('nextCard').onclick = ()=>{ if(!currentCardPool.length)return; currentCardIdx=(currentCardIdx+1)%currentCardPool.length; currentCard=currentCardPool[currentCardIdx]; showCurrentCard(); };
+
+document.getElementById('speakCardQ').onclick = async ()=>{ if(!currentCard)return; await speak(currentCard.qDe,'de-DE'); if(currentCard.qEn)await speak(currentCard.qEn,'en-US'); };
+document.getElementById('speakCardA').onclick = async ()=>{ if(!currentCard||!currentCard.aDe)return; await speak(currentCard.aDe,'de-DE'); if(currentCard.aEn)await speak(currentCard.aEn,'en-US'); };
+
+document.getElementById('cardTypeFilter').onchange = (e)=>{ state.activeCardType=e.target.value; saveLocal(); currentCardIdx=0; renderCards(); };
+document.getElementById('cardTopicFilter').onchange = (e)=>{ state.activeCardTopic=e.target.value; saveLocal(); currentCardIdx=0; renderCards(); };
+document.getElementById('cardLevelFilter').onchange = (e)=>{ state.activeCardLevel=e.target.value; saveLocal(); currentCardIdx=0; renderCards(); };
+document.getElementById('cardSort').onchange = (e)=>{ state.cardSort=e.target.value; saveLocal(); currentCardIdx=0; renderCards(); };
+
+/* AUTOPLAY */
+let autoState={running:false,paused:false,abort:false};
+async function startAutoplay(){
+  if(isAutoplayRunning)return; const pool=filteredCards(); if(!pool.length){toast('No cards','err');return;}
+  isAutoplayRunning=true; autoState={running:true,paused:false,abort:false};
+  document.getElementById('autoplayBar').classList.add('show'); document.getElementById('startAutoplayBtn').disabled=true;
+  const fc = document.getElementById('flashcard');
+
+  for(let i=currentCardIdx; i<pool.length; i++){
+    if(autoState.abort) break;
+    currentCardIdx=i; currentCard=pool[i]; showCurrentCard();
+    document.getElementById('autoplayStatus').textContent = `Card ${i+1} / ${pool.length}`;
+
+    fc.classList.remove('flipped'); await delay(300);
+    if(autoState.abort) break;
+    await speakAutoplay(currentCard.qDe, 'de-DE'); await delay(400);
+    if(currentCard.qEn && !autoState.abort){ await speakAutoplay(currentCard.qEn, 'en-US'); }
+
+    if(autoState.abort) break;
+    fc.classList.add('flipped'); await delay(400);
+
+    if(currentCard.aDe && !autoState.abort){ await speakAutoplay(currentCard.aDe, 'de-DE'); } await delay(400);
+    if(currentCard.aEn && !autoState.abort){ await speakAutoplay(currentCard.aEn, 'en-US'); }
+
+    if(autoState.abort) break;
+    const pause = parseFloat(state.autoplayPause) * 1000;
+    await delay(pause);
+    while(autoState.paused && !autoState.abort){ await delay(100); }
+  }
+  isAutoplayRunning=false; autoState.running=false;
+  document.getElementById('autoplayBar').classList.remove('show'); document.getElementById('startAutoplayBtn').disabled=false;
+  document.getElementById('autoplayStatus').textContent='Done'; toast('Autoplay done','ok');
+}
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function speakAutoplay(text, lang){
+  return new Promise(resolve=>{
+    if(autoState.abort || !text){ resolve(); return; }
+    const u=new SpeechSynthesisUtterance(text); u.lang=lang; u.rate=state.autoplaySpeed; u.onend=resolve; u.onerror=resolve;
+    const v=speechSynthesis.getVoices().find(v=>v.lang.startsWith(lang.slice(0,2))); if(v)u.voice=v;
+    speechSynthesis.speak(u);
+  });
+}
+document.getElementById('startAutoplayBtn').onclick = ()=> startAutoplay();
+document.getElementById('autoStopBtn').onclick = ()=>{ autoState.abort=true; cancelSpeech(); };
+document.getElementById('autoPauseBtn').onclick = (e)=>{ autoState.paused=!autoState.paused; e.target.textContent=autoState.paused?'Resume':'Pause'; };
+
+/* Global Speed Control */
+document.getElementById('autoSpeed').oninput = (e)=>{
+  state.autoplaySpeed = parseFloat(e.target.value);
+  document.getElementById('autoSpeedVal').textContent = state.autoplaySpeed.toFixed(1) + 'x';
+  saveLocal();
+};
+document.getElementById('autoPause').oninput = (e)=>{
+  state.autoplayPause = parseFloat(e.target.value);
+  document.getElementById('autoPauseVal').textContent = state.autoplayPause.toFixed(1) + 's';
+  saveLocal();
+};
+document.getElementById('autoSpeed').value = state.autoplaySpeed;
+document.getElementById('autoSpeedVal').textContent = state.autoplaySpeed.toFixed(1) + 'x';
+document.getElementById('autoPause').value = state.autoplayPause;
+document.getElementById('autoPauseVal').textContent = state.autoplayPause.toFixed(1) + 's';
+
+/* CLICKABLE LIST */
+function renderList(){
+  const list=document.getElementById('cardList'); if(!state.cards.length){ list.innerHTML='<p class="muted">No cards yet.</p>'; return; }
+  const pool = filteredCards();
+  if(!pool.length){ list.innerHTML='<p class="muted">No cards match current filters.</p>'; return; }
+  const grouped={}; pool.forEach(c=>{ const key=`${c.topic||'(no topic)'} · ${(c.type||'qa').toUpperCase()} · ${c.level||'A2'}`; (grouped[key]=grouped[key]||[]).push(c); });
+  list.innerHTML = Object.entries(grouped).map(([key,cards])=>`
+    <h3>${escapeHtml(key)} <span class="badge">${cards.length}</span></h3>
+    ${cards.map(c=>{
+      const isActive = currentCard && c.id === currentCard.id;
+      return `<div class="log-item ${isActive?'active-card':''}" onclick="jumpToCard('${c.id}')">
+        <b>${escapeHtml(c.qDe||'')}</b><br>
+        <span class="muted">${escapeHtml(c.qEn||'')}</span>
+        ${c.aDe?`<br><i style="color:var(--ok)">${escapeHtml(c.aDe)}</i>`:''}
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">
+          <button class="ghost tiny" onclick="editCard('${c.id}')">Edit</button>
+          <button class="ghost tiny" onclick="speakCardQById('${c.id}')">🔊 Q</button>
+          <button class="ghost tiny" onclick="speakCardAById('${c.id}')">🔊 A</button>
+          <button class="warn tiny" onclick="softDelete('${c.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `).join('');
+}
+window.jumpToCard = (id) => {
+  const idx = currentCardPool.findIndex(c => c.id === id);
+  if(idx !== -1) { currentCardIdx = idx; currentCard = currentCardPool[idx]; showCurrentCard(); }
+};
+window.speakCardQById=(id)=>{ const c=state.cards.find(x=>x.id===id); if(c)speak(c.qDe,'de-DE',0.9); };
+window.speakCardAById=(id)=>{ const c=state.cards.find(x=>x.id===id); if(c&&c.aDe)speak(c.aDe,'de-DE',0.9); };
+window.editCard=(id)=>{ const c=state.cards.find(x=>x.id===id); if(!c)return; document.getElementById('modalQDe').value=c.qDe; document.getElementById('modalQEn').value=c.qEn; document.getElementById('modalADe').value=c.aDe; document.getElementById('modalAEn').value=c.aEn; document.getElementById('modalLevel').value=c.level||'A2'; populateModalTopics(c.topic); document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active')); document.querySelector('[data-ctab="manual"]').classList.add('active'); document.getElementById('cardTabManual').style.display='block'; document.getElementById('cardTabBulk').style.display='none'; document.getElementById('addCardModal').classList.add('show'); window._editingId=id; };
+window.softDelete=async(id)=>{ const c=state.cards.find(x=>x.id===id); if(!c)return; if(!confirm('Delete card?'))return; state.cards=state.cards.filter(x=>x.id!==id); save(); renderCards(); updateTopicSelects(); await deleteCardRemote(id); };
+document.getElementById('clearCards').onclick=async()=>{ if(!confirm('Delete ALL cards?'))return; const ids=state.cards.map(c=>c.id); state.cards=[]; save(); renderCards(); updateTopicSelects(); for(const id of ids)await deleteCardRemote(id); };
+
+/* MODAL */
+document.querySelectorAll('.modal-tab').forEach(t=>{ t.onclick=()=>{ document.querySelectorAll('.modal-tab').forEach(x=>x.classList.remove('active')); t.classList.add('active'); document.getElementById('cardTabManual').style.display=t.dataset.ctab==='manual'?'block':'none'; document.getElementById('cardTabBulk').style.display=t.dataset.ctab==='bulk'?'block':'none'; }; });
+document.getElementById('fab').onclick=()=>{ window._editingId=null; document.getElementById('modalQDe').value=''; document.getElementById('modalQEn').value=''; document.getElementById('modalADe').value=''; document.getElementById('modalAEn').value=''; document.getElementById('modalLevel').value='A2'; populateModalTopics(state.activeTopic); document.getElementById('addCardModal').classList.add('show'); };
+document.getElementById('cancelAddCard').onclick=()=>{ document.getElementById('addCardModal').classList.remove('show'); };
+document.getElementById('confirmAddCard').onclick=async()=>{
+  const activeTab=document.querySelector('.modal-tab.active').dataset.ctab;
+  if(activeTab==='bulk'){
+    const raw=document.getElementById('bulkInput').value.trim(), topic=document.getElementById('bulkTopic').value||state.activeTopic;
+    const lvl=document.getElementById('bulkLevel').value||'A2';
+    if(!raw)return; const blocks=raw.split(/\n\s*\n/);
+    for(const block of blocks){ const lines=block.split('\n').map(l=>l.trim()).filter(Boolean); if(lines.length<2)continue; const [first,second]=lines; const isQ=first.includes('?'); const c={id:uid(),topic,level:lvl,type:'qa',qDe:isQ?first:second,qEn:isQ?second:first,aDe:'',aEn:'',box:0,due:Date.now(),reps:0}; state.cards.push(c); await pushCard(c); }
+    save(); renderCards(); updateTopicSelects(); document.getElementById('bulkInput').value=''; document.getElementById('addCardModal').classList.remove('show'); toast('Bulk added','ok'); return;
+  }
+  const topic=document.getElementById('modalTopic').value, level=document.getElementById('modalLevel').value, qDe=document.getElementById('modalQDe').value.trim(), qEn=document.getElementById('modalQEn').value.trim(), aDe=document.getElementById('modalADe').value.trim(), aEn=document.getElementById('modalAEn').value.trim();
+  if(!qDe){ toast('Question required','err'); return; }
+  if(window._editingId){ const c=state.cards.find(x=>x.id===window._editingId); if(c){ Object.assign(c,{topic,level,type:'qa',qDe,qEn,aDe,aEn}); await pushCard(c); } window._editingId=null; }
+  else { const c={id:uid(),topic,level,type:'qa',qDe,qEn,aDe,aEn,box:0,due:Date.now(),reps:0}; state.cards.push(c); await pushCard(c); }
+  save(); renderCards(); updateTopicSelects(); document.getElementById('addCardModal').classList.remove('show'); toast('Saved','ok');
+};
+function populateModalTopics(selected){
+  const sel=document.getElementById('modalTopic'), topics=[...new Set([...state.topics,...state.cards.map(c=>c.topic).filter(Boolean)])];
+  sel.innerHTML=topics.map(t=>`<option ${t===selected?'selected':''}>${escapeHtml(t)}</option>`).join('');
+  const bsel=document.getElementById('bulkTopic'); bsel.innerHTML=topics.map(t=>`<option ${t===state.activeTopic?'selected':''}>${escapeHtml(t)}</option>`).join('');
+}
+
+/* =========================================================
+   TOPIC SELECTS
+   ========================================================= */
+function updateTopicSelects(){
+  const topics=['all',...new Set(state.cards.map(c=>c.topic).filter(Boolean))];
+  ['quizTopicSel','listenTopicSel','scrambleTopicSel'].forEach(id=>{ const sel=document.getElementById(id); if(!sel)return; const prev=sel.value; sel.innerHTML=topics.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t==='all'?'All topics':t)}</option>`).join(''); if(topics.includes(prev))sel.value=prev; });
+}
+
+/* =========================================================
+   QUIZ - PER-TAB HISTORY (left side)
+   ========================================================= */
+function renderQuizHistory(){
+  const sub = state.activeQuizSub;
+  let types=[];
+  if(sub==='quiz-translate') types=['translate'];
+  else if(sub==='quiz-listen') types=['listening'];
+  else if(sub==='quiz-scramble') types=['scramble'];
+  else if(sub==='quiz-speak') types=['speaking'];
+  const items = state.exercises.filter(e=>types.includes(e.type)).sort((a,b)=>b.created-a.created).slice(0,30);
+  const el=document.getElementById('quizSideHistory');
+  if(!items.length){ el.innerHTML='<p class="muted" style="font-size:.8rem">No exercises for this tab yet.</p>'; return; }
+  el.innerHTML=items.map(e=>{
+    const title = e.topic || '(no topic)';
+    return `<div class="side-hist-item" data-id="${e.id}">
+      <div class="sh-title">${escapeHtml(title)}</div>
+      <div class="sh-meta">${escapeHtml(e.level||'')} · ${new Date(e.created).toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.side-hist-item').forEach(it=>{
+    it.onclick=()=>{ const e=state.exercises.find(x=>x.id===it.dataset.id); if(e) openSideHistoryItem(e); };
+  });
+}
+
+/* =========================================================
+   HISTORY LOADING (with save/ignore warning)
+   ========================================================= */
+const playground = {
+  'translate':  { dirty:false, saveFn:null, clearFn:null },
+  'listening':  { dirty:false, saveFn:null, clearFn:null },
+  'scramble':   { dirty:false, saveFn:null, clearFn:null },
+  'speaking':   { dirty:false, saveFn:null, clearFn:null }
+};
+
+function markDirty(type){ if(playground[type]) playground[type].dirty = true; }
+function markClean(type){ if(playground[type]) playground[type].dirty = false; }
+
+function showLoadedBanner(containerId, label){
+  const prev = document.getElementById(containerId)?.querySelector('.history-loaded-banner');
+  if(prev) prev.remove();
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const banner = document.createElement('div');
+  banner.className = 'history-loaded-banner';
+  banner.innerHTML = `<span>📂 Loaded from history: <b>${escapeHtml(label)}</b></span><button class="ghost" id="closeLoadedBanner">Close</button>`;
+  el.prepend(banner);
+  banner.querySelector('#closeLoadedBanner').onclick = ()=>{
+    banner.remove();
+    clearPlaygroundForType(currentLoadedType);
+  };
+}
+
+let currentLoadedType = null;
+
+async function openSideHistoryItem(ex){
+  const type = ex.type;
+  const stateObj = playground[type];
+  if(!stateObj) return;
+
+  if(stateObj.dirty){
+    const modal = document.getElementById('historyWarnModal');
+    document.getElementById('historyWarnText').textContent =
+      `You have an unsaved ${type} exercise in progress. Loading the history item will replace it.`;
+    modal.classList.add('show');
+
+    const cancelBtn = document.getElementById('histWarnCancel');
+    const ignoreBtn = document.getElementById('histWarnIgnore');
+    const saveBtn   = document.getElementById('histWarnSave');
+
+    [cancelBtn, ignoreBtn, saveBtn].forEach(b=>{
+      const clone = b.cloneNode(true);
+      b.parentNode.replaceChild(clone, b);
+    });
+    const cB = document.getElementById('histWarnCancel');
+    const iB = document.getElementById('histWarnIgnore');
+    const sB = document.getElementById('histWarnSave');
+
+    const close = ()=> modal.classList.remove('show');
+
+    cB.onclick = close;
+    iB.onclick = async ()=>{ close(); stateObj.dirty=false; await loadExercise(ex); };
+    sB.onclick = async ()=>{
+      close();
+      try{
+        if(typeof stateObj.saveFn === 'function'){ await stateObj.saveFn(); }
+        stateObj.dirty=false;
+      }catch(e){ console.warn('saveFn failed', e); }
+      await loadExercise(ex);
+    };
+    return;
+  }
+
+  await loadExercise(ex);
+}
+
+async function loadExercise(ex){
+  currentLoadedType = ex.type;
+  if(ex.type==='translate'){
+    document.querySelectorAll('.quiz-tab').forEach(x=>x.classList.remove('active'));
+    document.querySelector('[data-sub="quiz-translate"]').classList.add('active');
+    document.querySelectorAll('.subpanel').forEach(x=>x.classList.remove('active'));
+    document.getElementById('quiz-translate').classList.add('active');
+    state.activeQuizSub='quiz-translate'; saveLocal();
+    await loadTranslateExercise(ex);
+    showLoadedBanner('quiz-translate','translate · '+(ex.topic||''));
+  }
+  else if(ex.type==='listening'){
+    document.querySelectorAll('.quiz-tab').forEach(x=>x.classList.remove('active'));
+    document.querySelector('[data-sub="quiz-listen"]').classList.add('active');
+    document.querySelectorAll('.subpanel').forEach(x=>x.classList.remove('active'));
+    document.getElementById('quiz-listen').classList.add('active');
+    state.activeQuizSub='quiz-listen'; saveLocal();
+    loadListeningExercise(ex);
+    showLoadedBanner('quiz-listen','listening · '+(ex.topic||''));
+  }
+  else if(ex.type==='scramble'){
+    document.querySelectorAll('.quiz-tab').forEach(x=>x.classList.remove('active'));
+    document.querySelector('[data-sub="quiz-scramble"]').classList.add('active');
+    document.querySelectorAll('.subpanel').forEach(x=>x.classList.remove('active'));
+    document.getElementById('quiz-scramble').classList.add('active');
+    state.activeQuizSub='quiz-scramble'; saveLocal();
+    loadScrambleExercise(ex);
+    showLoadedBanner('quiz-scramble','scramble · '+(ex.topic||''));
+  }
+  else if(ex.type==='speaking'){
+    document.querySelectorAll('.quiz-tab').forEach(x=>x.classList.remove('active'));
+    document.querySelector('[data-sub="quiz-speak"]').classList.add('active');
+    document.querySelectorAll('.subpanel').forEach(x=>x.classList.remove('active'));
+    document.getElementById('quiz-speak').classList.add('active');
+    state.activeQuizSub='quiz-speak'; saveLocal();
+    loadSpeakingExercise(ex);
+    showLoadedBanner('quiz-speak','speaking · '+(ex.topic||''));
+  }
+}
+
+function clearPlaygroundForType(type){
+  if(type==='translate'){ document.getElementById('translateQuizBox').innerHTML='<p class="muted">Pick a topic.</p>'; }
+  if(type==='listening'){ document.getElementById('listenQuizBox').innerHTML='<p class="muted">Choose a topic.</p>'; lastListenText=''; lastListenQuestions=[]; }
+  if(type==='scramble'){ document.getElementById('scrambleQuizBox').innerHTML='<p class="muted">Generate a sentence.</p>'; }
+  if(type==='speaking'){ document.getElementById('chatUI').style.display='none'; liveChatHistory=[]; }
+  if(playground[type]) playground[type].dirty=false;
+}
+
+async function loadTranslateExercise(ex){
+  const p = ex.payload || {};
+  const srcText = p.srcText || '', targetLang = p.targetLang || 'German', targetText = p.targetText || '', user = p.user || '';
+  document.getElementById('translateQuizBox').innerHTML=`
+    <p class="muted">Translate into ${escapeHtml(targetLang)}:</p>
+    <p style="font-size:1.2rem;margin:8px 0"><b>${escapeHtml(srcText)}</b></p>
+    <input id="translateAnswer" placeholder="Antwort..." value="${escapeHtml(user)}"/>
+    <div class="flex" style="margin-top:10px">
+      <button id="checkTranslate" class="gold">Check</button>
+      <button class="ghost" id="askAITrans">Ask AI why</button>
+      <button class="ghost" id="revealTranslate">Show</button>
+    </div>
+    <div id="translateFeedback"></div>`;
+  markClean('translate');
+  wireTranslateActions(srcText, targetLang, targetText, ex.topic, ex.level);
+}
+
+function wireTranslateActions(srcText, targetLang, targetText, topic, level){
+  document.getElementById('checkTranslate').onclick=async()=>{
+    const user=document.getElementById('translateAnswer').value.trim(); if(!user)return;
+    const fb=document.getElementById('translateFeedback'); fb.innerHTML='<p class="muted">Checking...</p>';
+    try{
+      const prompt=fillTemplate(state.prompts.translateCheck,{})+'\n\n'+JSON.stringify({source_text:srcText,target_lang:targetLang,expected_answer:targetText,user_answer:user});
+      const raw=await groqCall(prompt,{json:true,kind:'translate-check'}); const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim()); const ok=parsed.correct;
+      state.scores.trans.t++; if(ok)state.scores.trans.c++; save(); renderScores(); await pushScores();
+      fb.innerHTML=ok?`<p class="correct">✓ Richtig!</p><p class="muted">${escapeHtml(parsed.explanation||'')}</p>`:`<p class="wrong">✗ Nicht ganz.</p><p>Expected: <b>${escapeHtml(parsed.corrected||targetText)}</b></p><p class="muted">${escapeHtml(parsed.explanation||'')}</p>`;
+      const ex={id:uid(),type:'translate',topic,level,payload:{srcText,targetLang,targetText,user,ok},created:Date.now()};
+      state.exercises.unshift(ex); await pushExercise(ex); markClean('translate'); renderQuizHistory();
+    }catch(e){ fb.innerHTML=`<p class="wrong">${escapeHtml(e.message)}</p>`; }
+  };
+  document.getElementById('askAITrans').onclick=async()=>{
+    const user=document.getElementById('translateAnswer').value.trim(); const fb=document.getElementById('translateFeedback');
+    if(!user){toast('Type your attempt first','err');return;} fb.innerHTML='<p class="muted">Asking AI...</p>';
+    try{ const payload={sentence_de:targetText,user_attempt:user}, prompt=state.prompts.askAI+'\n\n'+JSON.stringify(payload), raw=await groqCall(prompt,{json:true,kind:'ask-ai'}), p=JSON.parse(raw.replace(/```json|```/g,'').trim());
+      fb.innerHTML=`<p class="${p.verdict==='correct'?'correct':'wrong'}">${p.verdict==='correct'?'✓ Correct':'Needs adjustment'}</p><p>Correct: <b>${escapeHtml(p.corrected||targetText)}</b></p><p class="muted">${escapeHtml(p.explanation||'')}</p>`; }catch(e){ fb.innerHTML=`<p class="wrong">${escapeHtml(e.message)}</p>`; }
+  };
+  document.getElementById('revealTranslate').onclick=()=>{ document.getElementById('translateFeedback').innerHTML=`<p>Answer: <b>${escapeHtml(targetText)}</b></p>`; };
+}
+
+function loadListeningExercise(ex){
+  const p = ex.payload || {};
+  const text = p.text || '', qs = p.questions || [], examType = p.examType || 'excluded', format = p.format || 'paragraph';
+  lastListenText = text; lastListenQuestions = qs; lastListenTopic = ex.topic || ''; lastListenLevel = ex.level || 'A2';
+  const questionBody = qs.map((q,i)=>{
+    let qHtml = '';
+    if(examType==='included'){ qHtml = `<span class="num">${i+1}.</span>`; }
+    else { qHtml = `<span class="num">${i+1}.</span><span>${escapeHtml(q.de||'')}</span><button class="eye-btn" onclick="this.nextElementSibling.classList.toggle('show')">EN</button><span class="q-en-hidden muted" style="font-size:.78rem;display:block">${escapeHtml(q.en||'')}</span>`; }
+    return `<div class="listen-q" data-idx="${i}"><p style="margin:0">${qHtml}</p><input class="listen-input" data-idx="${i}" placeholder="Antwort auf Deutsch..."/><div class="correction" data-correction="${i}" style="display:none"></div></div>`;
+  }).join('');
+  const qsText = qs.map((q,i)=>`${i+1}. ${q.de||''}`).join('<br>');
+  const transcriptHtml = `<p style="font-size:1rem;line-height:1.6">${escapeHtml(text)}</p><hr><h4>Fragen</h4><div class="muted">${qsText}</div>`;
+
+  document.getElementById('listenQuizBox').innerHTML=`
+    <p class="muted">Topic: ${escapeHtml(ex.topic||'')} · Level: ${escapeHtml(ex.level||'')} · ${escapeHtml(format)}</p>
+    <details style="margin-top:10px"><summary style="cursor:pointer;color:var(--accent2)">Show transcript</summary><div style="margin-top:10px; padding:10px; background:var(--panel3); border-radius:6px;">${transcriptHtml}</div></details>
+    <hr><h3>Fragen</h3><div id="listenQuestions">${questionBody}</div>
+    <button class="gold" style="margin-top:10px" id="checkListenBtn">Check my answers</button>`;
+  document.getElementById('checkListenBtn').onclick=checkListenAnswers;
+  document.getElementById('playListenBtn').disabled=false;
+  updatePlayBtn();
+  markClean('listening');
+}
+
+function loadScrambleExercise(ex){
+  const p = ex.payload || {};
+  const correct = p.correct || '', shuffled = p.scrambled || [], qEn = p.qEn || '';
+  document.getElementById('scrambleQuizBox').innerHTML=`
+    <p class="muted">Arrange the words.</p>
+    <p style="font-size:1rem">Scrambled: <b>${shuffled.map(escapeHtml).join(' — ')}</b></p>
+    <p class="muted">Hint: ${escapeHtml(qEn)}</p>
+    <input id="scrambleAnswer" placeholder="Type full German sentence..."/>
+    <div class="flex" style="margin-top:10px">
+      <button class="gold" id="checkScramble">Check</button>
+      <button class="ghost" id="askAI">Ask AI why</button>
+      <button class="ghost" id="revealScramble">Show</button>
+    </div>
+    <div id="scrambleFeedback"></div>`;
+  document.getElementById('checkScramble').onclick=async()=>{
+    const user=normalize(document.getElementById('scrambleAnswer').value), target=normalize(correct), fb=document.getElementById('scrambleFeedback'), ok=user===target;
+    state.scores.scramble.t++; if(ok)state.scores.scramble.c++; save(); renderScores(); await pushScores();
+    fb.innerHTML=ok?'<p class="correct">✓ Perfekt!</p>':`<p class="wrong">✗ Not quite.</p><p>Correct: <b>${escapeHtml(correct)}</b></p>`;
+    markClean('scramble');
+  };
+  document.getElementById('askAI').onclick=async()=>{
+    const user=document.getElementById('scrambleAnswer').value.trim(), fb=document.getElementById('scrambleFeedback');
+    if(!user){toast('Type your attempt first','err');return;} fb.innerHTML='<p class="muted">Asking AI...</p>';
+    try{ const payload={sentence_de:correct,user_attempt:user}, prompt=state.prompts.askAI+'\n\n'+JSON.stringify(payload), raw=await groqCall(prompt,{json:true,kind:'ask-ai'}), p=JSON.parse(raw.replace(/```json|```/g,'').trim());
+      fb.innerHTML=`<p class="${p.verdict==='correct'?'correct':'wrong'}">${p.verdict==='correct'?'✓ Correct':'Needs adjustment'}</p><p>Correct: <b>${escapeHtml(p.corrected||correct)}</b></p><p class="muted">${escapeHtml(p.explanation||'')}</p>`; }catch(e){ fb.innerHTML=`<p class="wrong">${escapeHtml(e.message)}</p>`; }
+  };
+  document.getElementById('revealScramble').onclick=()=>{ document.getElementById('scrambleFeedback').innerHTML=`<p>Answer: <b>${escapeHtml(correct)}</b></p>`; };
+  markClean('scramble');
+}
+
+function loadSpeakingExercise(ex){
+  const p = ex.payload || {};
+  liveChatScenario = p.scenario || ex.topic || '';
+  liveChatLevel = ex.level || 'B1';
+  liveChatMode = p.mode || 'normal';
+  liveChatHistory = Array.isArray(p.history) ? [...p.history] : [];
+
+  document.getElementById('speakScenario').value = liveChatScenario;
+  document.getElementById('speakLevel').value = liveChatLevel;
+  document.getElementById('speakMode').value = liveChatMode;
+
+  document.getElementById('chatUI').style.display = 'block';
+  document.getElementById('startChatBtn').textContent = 'Restart';
+  const container = document.getElementById('chatContainer');
+  container.innerHTML = '';
+  liveChatHistory.forEach(m=>{
+    if(m.role==='assistant') addChatMessage('ai', m.content, '');
+    else if(m.role==='user') addChatMessage('user', m.content, '');
+  });
+  markClean('speaking');
+}
+
+/* =========================================================
+   QUIZ - TRANSLATE
+   ========================================================= */
+function normalize(s){ return String(s).toLowerCase().replace(/[.,!?;:'"„“”]/g,'').replace(/\s+/g,' ').trim(); }
+function renderScores(){ document.getElementById('scoreTransCorrect').textContent=state.scores.trans.c; document.getElementById('scoreTransTotal').textContent=state.scores.trans.t; document.getElementById('scoreScrambleCorrect').textContent=state.scores.scramble.c; document.getElementById('scoreScrambleTotal').textContent=state.scores.scramble.t; }
+
+let translateDir='en-de';
+document.getElementById('dirToggle').onclick=(e)=>{ translateDir=translateDir==='en-de'?'de-en':'en-de'; e.target.textContent=translateDir==='en-de'?'EN → DE':'DE → EN'; };
+document.getElementById('genTranslateQ').onclick=()=>{
+  const topic=document.getElementById('quizTopicSel').value; let pool=topic==='all'?state.cards:state.cards.filter(c=>c.topic===topic); pool=pool.filter(c=>c.qDe&&c.qEn);
+  if(!pool.length){ document.getElementById('translateQuizBox').innerHTML='<p class="muted">No cards.</p>'; return; }
+  const card=pool[Math.floor(Math.random()*pool.length)], srcLang=translateDir==='en-de'?'English':'German', targetLang=translateDir==='en-de'?'German':'English', srcText=translateDir==='en-de'?card.qEn:card.qDe, targetText=translateDir==='en-de'?card.qDe:card.qEn;
+  document.getElementById('translateQuizBox').innerHTML=`<p class="muted">Translate into ${targetLang}:</p><p style="font-size:1.2rem;margin:8px 0"><b>${escapeHtml(srcText)}</b></p><input id="translateAnswer" placeholder="Antwort..."/><div class="flex" style="margin-top:10px"><button id="checkTranslate" class="gold">Check</button><button class="ghost" id="askAITrans">Ask AI why</button><button class="ghost" id="revealTranslate">Show</button></div><div id="translateFeedback"></div>`;
+  markDirty('translate');
+
+  document.getElementById('checkTranslate').onclick=async()=>{
+    const user=document.getElementById('translateAnswer').value.trim(); if(!user)return; const fb=document.getElementById('translateFeedback'); fb.innerHTML='<p class="muted">Checking...</p>';
+    try{
+      const prompt=fillTemplate(state.prompts.translateCheck,{})+'\n\n'+JSON.stringify({source_text:srcText,target_lang:targetLang,expected_answer:targetText,user_answer:user});
+      const raw=await groqCall(prompt,{json:true,kind:'translate-check'}); const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim()); const ok=parsed.correct;
+      state.scores.trans.t++; if(ok)state.scores.trans.c++; save(); renderScores(); await pushScores();
+      fb.innerHTML=ok?`<p class="correct">✓ Richtig!</p><p class="muted">${escapeHtml(parsed.explanation||'')}</p>`:`<p class="wrong">✗ Nicht ganz.</p><p>Expected: <b>${escapeHtml(parsed.corrected||targetText)}</b></p><p class="muted">${escapeHtml(parsed.explanation||'')}</p>`;
+      const ex={id:uid(),type:'translate',topic,level:'A2',payload:{srcText,targetLang,targetText,user,ok},created:Date.now()};
+      state.exercises.unshift(ex); await pushExercise(ex); markClean('translate'); renderQuizHistory();
+    }catch(e){ fb.innerHTML=`<p class="wrong">${escapeHtml(e.message)}</p>`; }
+  };
+
+  document.getElementById('askAITrans').onclick=async()=>{
+    const user=document.getElementById('translateAnswer').value.trim(); const fb=document.getElementById('translateFeedback'); if(!user){toast('Type your attempt first','err');return;} fb.innerHTML='<p class="muted">Asking AI...</p>';
+    try{ const payload={sentence_de:targetText,user_attempt:user}, prompt=state.prompts.askAI+'\n\n'+JSON.stringify(payload), raw=await groqCall(prompt,{json:true,kind:'ask-ai'}), p=JSON.parse(raw.replace(/```json|```/g,'').trim()); fb.innerHTML=`<p class="${p.verdict==='correct'?'correct':'wrong'}">${p.verdict==='correct'?'✓ Correct':'Needs adjustment'}</p><p>Correct: <b>${escapeHtml(p.corrected||targetText)}</b></p><p class="muted">${escapeHtml(p.explanation||'')}</p>`; }catch(e){ fb.innerHTML=`<p class="wrong">${escapeHtml(e.message)}</p>`; }
+  };
+
+  document.getElementById('revealTranslate').onclick=()=>{ document.getElementById('translateFeedback').innerHTML=`<p>Answer: <b>${escapeHtml(targetText)}</b></p>`; };
+};
+
+/* =========================================================
+   QUIZ - LISTENING
+   ========================================================= */
+let lastListenText='', lastListenQuestions=[], lastListenTopic='', lastListenLevel='';
+let listenPlayState = 'stopped';
+
+document.getElementById('genListenQ').onclick=async()=>{
+  const topic=document.getElementById('listenTopicSel').value; if(topic==='all'){toast('Pick specific topic','err');return;}
+  const pool=state.cards.filter(c=>c.topic===topic); if(!pool.length){toast('No cards','err');return;}
+  const level=document.getElementById('listenLevel').value, sentences=parseInt(document.getElementById('listenSentences').value)||6, questions=parseInt(document.getElementById('listenQuestions').value)||4, examType=document.getElementById('listenExamType').value, format=document.getElementById('listenFormat').value, vocab=pool.map(c=>c.qDe).slice(0,20).join('\n'), unit=format==='dialog'?'turns':'sentences';
+  const prompt=fillTemplate(state.prompts.listening,{topic,level,sentences,questions,vocab,format,unit});
+  const btn=document.getElementById('genListenQ'); btn.disabled=true; btn.textContent='...';
+  try{
+    const raw=await groqCall(prompt,{json:true,kind:'listening'}); const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim()); const qs=Array.isArray(parsed.questions)?parsed.questions:[];
+    let dialogHtml='', speakText='';
+    if(format==='dialog'&&Array.isArray(parsed.dialog)){ dialogHtml='<div style="margin-top:12px">'+parsed.dialog.map(d=>`<div class="dialog-line ${d.speaker==='B'?'b':''}"><span class="speaker">${escapeHtml(d.speaker)}:</span><span>${escapeHtml(d.de)}</span></div>`).join('')+'</div>'; speakText=parsed.dialog.map(d=>d.de).join(' '); }
+    else { speakText=parsed.text||''; }
+
+    lastListenText=speakText; lastListenQuestions=qs; lastListenTopic=topic; lastListenLevel=level;
+
+    const ex={id:uid(),type:'listening',topic,level,payload:{text:speakText,questions:qs,examType,format},created:Date.now()}; state.exercises.unshift(ex); await pushExercise(ex); renderQuizHistory();
+
+    const questionBody=qs.map((q,i)=>{
+      let qHtml = '';
+      if(examType==='included'){ qHtml = `<span class="num">${i+1}.</span>`; }
+      else { qHtml = `<span class="num">${i+1}.</span><span>${escapeHtml(q.de)}</span><button class="eye-btn" onclick="this.nextElementSibling.classList.toggle('show')">EN</button><span class="q-en-hidden muted" style="font-size:.78rem;display:block">${escapeHtml(q.en)}</span>`; }
+      return `<div class="listen-q" data-idx="${i}"><p style="margin:0">${qHtml}</p><input class="listen-input" data-idx="${i}" placeholder="Antwort auf Deutsch..."/><div class="correction" data-correction="${i}" style="display:none"></div></div>`;
+    }).join('');
+
+    const qsText = qs.map((q,i)=>`${i+1}. ${q.de}`).join('<br>');
+    const transcriptHtml = (dialogHtml || `<p style="font-size:1rem;line-height:1.6">${escapeHtml(speakText)}</p>`) + `<hr><h4>Fragen</h4><div class="muted">${qsText}</div>`;
+
+    document.getElementById('listenQuizBox').innerHTML=`
+      <p class="muted">Topic: ${escapeHtml(topic)} · Level: ${escapeHtml(level)} · ${format}</p>
+      <details style="margin-top:10px"><summary style="cursor:pointer;color:var(--accent2)">Show transcript (after listening!)</summary><div style="margin-top:10px; padding:10px; background:var(--panel3); border-radius:6px;">${transcriptHtml}</div></details>
+      <hr><h3>Fragen</h3><div id="listenQuestions">${questionBody}</div>
+      <button class="gold" style="margin-top:10px" id="checkListenBtn">Check my answers</button>`;
+    markDirty('listening');
+
+    document.getElementById('checkListenBtn').onclick=checkListenAnswers;
+
+    playListenExam();
+
+  }catch(e){ toast(e.message,'err'); } finally{ btn.disabled=false; btn.textContent='Generate'; }
+};
+
+async function playListenExam(){
+  if(listenPlayState==='playing') return;
+  const text = lastListenText;
+  const qs = lastListenQuestions.map((q,i)=> `${i+1}. ${q.de}`).join('. ');
+  const fullText = text + (qs ? `... Fragen... ${qs}` : '');
+  listenPlayState = 'playing';
+  updatePlayBtn();
+  await speak(fullText, 'de-DE', 1);
+  listenPlayState = 'stopped';
+  updatePlayBtn();
+}
+
+document.getElementById('playListenBtn').onclick=()=>{
+  if(listenPlayState === 'stopped'){ playListenExam(); }
+  else if(listenPlayState === 'playing'){ speechSynthesis.pause(); listenPlayState='paused'; updatePlayBtn(); }
+  else if(listenPlayState === 'paused'){ speechSynthesis.resume(); listenPlayState='playing'; updatePlayBtn(); }
+};
+function updatePlayBtn(){
+  const btn = document.getElementById('playListenBtn');
+  btn.disabled = listenPlayState==='stopped' && !lastListenText;
+  if(listenPlayState==='playing') btn.textContent='Pause';
+  else if(listenPlayState==='paused') btn.textContent='Resume';
+  else btn.textContent='Play';
+}
+document.getElementById('slowListen').onclick=()=>{
+  if(!lastListenText) return;
+  const qs = lastListenQuestions.map((q,i)=> `${i+1}. ${q.de}`).join('. ');
+  const fullText = lastListenText + (qs ? `... Fragen... ${qs}` : '');
+  speak(fullText, 'de-DE', 0.6);
+};
+
+async function checkListenAnswers(){
+  const inputs=document.querySelectorAll('.listen-input'), userAnswers=[...inputs].map(i=>i.value.trim()); if(userAnswers.every(a=>!a)){toast('Answer at least one','err');return;}
+  try{
+    const payload={questions:lastListenQuestions.map(q=>({de:q.de,en:q.en,answer_de:q.answer_de||''})),user_answers:userAnswers};
+    const prompt=state.prompts.listenCheck+'\n\n'+JSON.stringify(payload); const raw=await groqCall(prompt,{json:true,kind:'listening-check'});
+    let results; try{ const p=JSON.parse(raw.replace(/```json|```/g,'').trim()); results=Array.isArray(p)?p:(Array.isArray(p.results)?p.results:[]); }catch(e){ results=[]; }
+    results.forEach((r,i)=>{ const el=document.querySelector(`[data-correction="${i}"]`); if(!el)return; el.style.display='block'; el.classList.toggle('wrong',!r.correct); const q=lastListenQuestions[i]||{}; el.innerHTML=`<p style="margin:0 0 4px"><b>${r.correct?'✓':'✗'}</b>${r.correct?'':` Correct: <b style="color:var(--ok)">${escapeHtml(r.corrected||q.answer_de||'')}</b>`}</p><p style="margin:0;color:var(--muted)">${escapeHtml(r.explanation||'')}</p>`; });
+    markClean('listening');
+    toast('Checked','ok');
+  }catch(e){ toast(e.message,'err'); }
+}
+
+/* =========================================================
+   QUIZ - SCRAMBLE
+   ========================================================= */
+document.getElementById('genScrambleQ').onclick=()=>{
+  const topic=document.getElementById('scrambleTopicSel').value;
+  let pool = topic==='all' ? state.cards : state.cards.filter(c=>c.topic===topic);
+  pool = pool.filter(c=>c.qDe && c.qDe.includes(' '));
+
+  // No exercise created → mark clean (nothing to save)
+  if(!pool.length){
+    document.getElementById('scrambleQuizBox').innerHTML='<p class="muted">No sentences.</p>';
+    markClean('scramble');
+    return;
+  }
+
+  const card=pool[Math.floor(Math.random()*pool.length)];
+  const words=card.qDe.replace(/[.,!?]/g,'').split(/\s+/);
+  const shuffled=[...words].sort(()=>Math.random()-0.5);
+  const ex={id:uid(),type:'scramble',topic,level:'A2',payload:{correct:card.qDe,scrambled:shuffled,qEn:card.qEn},created:Date.now()};
+  state.exercises.unshift(ex); pushExercise(ex); renderQuizHistory();
+
+  document.getElementById('scrambleQuizBox').innerHTML=`<p class="muted">Arrange the words.</p><p style="font-size:1rem">Scrambled: <b>${shuffled.map(escapeHtml).join(' — ')}</b></p><p class="muted">Hint: ${escapeHtml(card.qEn)}</p><input id="scrambleAnswer" placeholder="Type full German sentence..."/><div class="flex" style="margin-top:10px"><button class="gold" id="checkScramble">Check</button><button class="ghost" id="askAI">Ask AI why</button><button class="ghost" id="revealScramble">Show</button></div><div id="scrambleFeedback"></div>`;
+
+  // A real, uncompleted exercise now exists → mark dirty
+  markDirty('scramble');
+
+  document.getElementById('checkScramble').onclick=async()=>{
+    const user=normalize(document.getElementById('scrambleAnswer').value), target=normalize(card.qDe), fb=document.getElementById('scrambleFeedback'), ok=user===target;
+    state.scores.scramble.t++; if(ok)state.scores.scramble.c++; save(); renderScores(); await pushScores();
+    fb.innerHTML=ok?'<p class="correct">✓ Perfekt!</p>':`<p class="wrong">✗ Not quite.</p><p>Correct: <b>${escapeHtml(card.qDe)}</b></p>`;
+    markClean('scramble');
+  };
+  document.getElementById('askAI').onclick=async()=>{
+    const user=document.getElementById('scrambleAnswer').value.trim(), fb=document.getElementById('scrambleFeedback');
+    if(!user){toast('Type your attempt first','err');return;} fb.innerHTML='<p class="muted">Asking AI...</p>';
+    try{ const payload={sentence_de:card.qDe,user_attempt:user}, prompt=state.prompts.askAI+'\n\n'+JSON.stringify(payload), raw=await groqCall(prompt,{json:true,kind:'ask-ai'}), p=JSON.parse(raw.replace(/```json|```/g,'').trim());
+      fb.innerHTML=`<p class="${p.verdict==='correct'?'correct':'wrong'}">${p.verdict==='correct'?'✓ Correct':'Needs adjustment'}</p><p>Correct: <b>${escapeHtml(p.corrected||card.qDe)}</b></p><p class="muted">${escapeHtml(p.explanation||'')}</p>`; }catch(e){ fb.innerHTML=`<p class="wrong">${escapeHtml(e.message)}</p>`; }
+  };
+  document.getElementById('revealScramble').onclick=()=>{ document.getElementById('scrambleFeedback').innerHTML=`<p>Answer: <b>${escapeHtml(card.qDe)}</b></p>`; };
+};
+
+/* =========================================================
+   LIVE CONVERSATION
+   ========================================================= */
+let liveChatHistory = [], liveChatScenario='', liveChatLevel='B1', liveChatMode='normal';
+
+document.getElementById('startChatBtn').onclick = async () => {
+  liveChatScenario = document.getElementById('speakScenario').value.trim() || 'A casual conversation';
+  liveChatLevel = document.getElementById('speakLevel').value;
+  liveChatMode = document.getElementById('speakMode').value;
+
+  document.getElementById('chatUI').style.display = 'block';
+  document.getElementById('chatContainer').innerHTML = '';
+  document.getElementById('startChatBtn').textContent = 'Restart';
+  liveChatHistory = [];
+
+  addChatMessage('ai', 'Hallo! Wie kann ich Ihnen helfen?', '(Hello! How can I help you?)');
+  liveChatHistory.push({ role: 'assistant', content: 'Hallo! Wie kann ich Ihnen helfen?' });
+  markDirty('speaking');
+  renderQuizHistory();
+};
+
+async function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+
+  addChatMessage('user', text);
+  liveChatHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.disabled = true;
+  markDirty('speaking');
+
+  try{
+    const sysPrompt = fillTemplate(state.prompts.chatPartner, { scenario: liveChatScenario, level: liveChatLevel, mode: liveChatMode });
+    const prompt = sysPrompt + '\n\nConversation so far:\n' + liveChatHistory.map(m=>`${m.role}: ${m.content}`).join('\n') + '\n\nRespond with the next assistant message in JSON format as requested.';
+
+    const raw = await groqCall(prompt, {json:true, kind:'chat-partner'});
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    let translation = parsed.ai_en || '';
+    let correction = parsed.correction || '';
+    if(correction) translation = `💡 ${correction}\n${translation}`;
+
+    addChatMessage('ai', parsed.ai_de, translation);
+    liveChatHistory.push({ role: 'assistant', content: parsed.ai_de });
+    speak(parsed.ai_de, 'de-DE');
+  }catch(e){
+    addChatMessage('ai', 'Error: ' + e.message, '');
+  }finally{
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+function addChatMessage(role, text, translation){
+  const container = document.getElementById('chatContainer');
+  const div = document.createElement('div');
+  div.className = `chat-bubble ${role}`;
+  div.innerHTML = `<div>${escapeHtml(text)}</div>${translation ? `<div class="translation">${escapeHtml(translation)}</div>` : ''}`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+document.getElementById('endChatBtn').onclick = async () => {
+  if(liveChatHistory.length < 2){ toast('Conversation too short','err'); return; }
+  const ex = {
+    id: uid(),
+    type: 'speaking',
+    topic: liveChatScenario,
+    level: liveChatLevel,
+    payload: { mode: liveChatMode, scenario: liveChatScenario, history: liveChatHistory },
+    created: Date.now()
+  };
+  state.exercises.unshift(ex);
+  save();
+  await pushExercise(ex);
+  markClean('speaking');
+  renderQuizHistory();
+  toast('Conversation saved to history','ok');
+};
+
+document.getElementById('micBtn').onclick = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){ toast('Speech Recognition not supported in this browser', 'err'); return; }
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'de-DE';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  const btn = document.getElementById('micBtn');
+  btn.textContent = '🔴'; btn.disabled = true;
+  recognition.start();
+  recognition.onresult = (event) => {
+    document.getElementById('chatInput').value = event.results[0][0].transcript;
+    btn.textContent = '🎤'; btn.disabled = false;
+  };
+  recognition.onspeechend = () => { recognition.stop(); btn.textContent = '🎤'; btn.disabled = false; };
+  recognition.onerror = (event) => { toast('Mic error: ' + event.error, 'err'); btn.textContent = '🎤'; btn.disabled = false; };
+};
+
+/* =========================================================
+   NOTES
+   ========================================================= */
+let currentNoteId=null;
+function renderNotes(){
+  const grid=document.getElementById('notesGrid'); if(!state.notes.length){ grid.innerHTML='<p class="muted">No notes yet. Click + New Note.</p>'; return; }
+  const sorted=[...state.notes].sort((a,b)=>b.updated-a.updated);
+  grid.innerHTML=sorted.map(n=>{ const tmp=document.createElement('div'); tmp.innerHTML=n.body; const text=(tmp.textContent||'').slice(0,160); return `<div class="note-card" data-id="${n.id}"><div class="note-title">${escapeHtml(n.title||'(untitled)')}</div><div class="note-preview">${escapeHtml(text)}</div><div class="note-meta">${new Date(n.updated).toLocaleString()}</div></div>`; }).join('');
+  grid.querySelectorAll('.note-card').forEach(c=>{ c.onclick=()=>openNote(c.dataset.id); });
+}
+document.getElementById('newNoteBtn').onclick=()=>{ currentNoteId=null; document.getElementById('noteModalTitle').textContent='New Note'; document.getElementById('noteTitle').value=''; document.getElementById('noteEditor').innerHTML=''; document.getElementById('noteTimestamp').textContent=''; document.getElementById('deleteNote').style.display='none'; document.getElementById('noteModal').classList.add('show'); };
+function openNote(id){ const n=state.notes.find(x=>x.id===id); if(!n)return; currentNoteId=id; document.getElementById('noteModalTitle').textContent='Edit Note'; document.getElementById('noteTitle').value=n.title||''; document.getElementById('noteEditor').innerHTML=n.body||''; document.getElementById('noteTimestamp').textContent=`Created: ${new Date(n.created).toLocaleString()} · Updated: ${new Date(n.updated).toLocaleString()}`; document.getElementById('deleteNote').style.display=''; document.getElementById('noteModal').classList.add('show'); }
+document.getElementById('cancelNote').onclick=()=>{ document.getElementById('noteModal').classList.remove('show'); };
+document.getElementById('saveNote').onclick=async()=>{ const title=document.getElementById('noteTitle').value.trim(), body=sanitizeHtml(document.getElementById('noteEditor').innerHTML); if(!body.trim()){toast('Empty note','err');return;} let n; if(currentNoteId){ n=state.notes.find(x=>x.id===currentNoteId); if(n){n.title=title||n.title;n.body=body;n.updated=Date.now();} } else { const tmp=document.createElement('div'); tmp.innerHTML=body; const auto=(tmp.textContent||'').trim().slice(0,40); n={id:uid(),title:title||auto||'Note',body,created:Date.now(),updated:Date.now()}; state.notes.unshift(n); } save(); await pushNote(n); renderNotes(); document.getElementById('noteModal').classList.remove('show'); toast('Saved','ok'); };
+document.getElementById('deleteNote').onclick=async()=>{ if(!currentNoteId||!confirm('Delete note?'))return; state.notes=state.notes.filter(x=>x.id!==currentNoteId); save(); renderNotes(); await deleteNoteRemote(currentNoteId); document.getElementById('noteModal').classList.remove('show'); };
+document.querySelectorAll('.note-toolbar [data-cmd]').forEach(b=>{ b.onclick=()=>{ document.execCommand(b.dataset.cmd,false,null); document.getElementById('noteEditor').focus(); }; });
+document.getElementById('noteColor').oninput=(e)=>{ document.execCommand('foreColor',false,e.target.value); document.getElementById('noteEditor').focus(); };
+document.getElementById('noteSize').onchange=(e)=>{ document.execCommand('fontSize',false,e.target.value); document.getElementById('noteEditor').focus(); };
+
+/* =========================================================
+   PROMPTS EDITOR
+   ========================================================= */
+function renderPromptsEditor(){
+  document.getElementById('promptGenQuestions').value=state.prompts.genQuestions;
+  document.getElementById('promptChunks').value=state.prompts.chunks;
+  document.getElementById('promptListening').value=state.prompts.listening;
+  document.getElementById('promptTranslateCheck').value=state.prompts.translateCheck;
+  document.getElementById('promptListenCheck').value=state.prompts.listenCheck;
+  document.getElementById('promptAskAI').value=state.prompts.askAI;
+  document.getElementById('promptChatPartner').value=state.prompts.chatPartner;
+  loadPromptIntoBox();
+}
+document.getElementById('savePrompts').onclick=async()=>{
+  state.prompts.genQuestions=document.getElementById('promptGenQuestions').value;
+  state.prompts.chunks=document.getElementById('promptChunks').value;
+  state.prompts.listening=document.getElementById('promptListening').value;
+  state.prompts.translateCheck=document.getElementById('promptTranslateCheck').value;
+  state.prompts.listenCheck=document.getElementById('promptListenCheck').value;
+  state.prompts.askAI=document.getElementById('promptAskAI').value;
+  state.prompts.chatPartner=document.getElementById('promptChatPartner').value;
+  save(); await pushSettings(); loadPromptIntoBox(); toast('Saved','ok');
+};
+document.getElementById('resetPrompts').onclick=async()=>{ if(!confirm('Reset?'))return; state.prompts={...DEFAULT_PROMPTS}; save(); renderPromptsEditor(); await pushSettings(); toast('Reset','ok'); };
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+document.getElementById('statusPill').onclick=(e)=>{ if(e.target.id==='statusPill'||e.target.closest('#statusPill')) document.getElementById('statusPanel').classList.toggle('show'); };
+document.addEventListener('click',(e)=>{ if(!e.target.closest('#statusPill')) document.getElementById('statusPanel').classList.remove('show'); });
+document.getElementById('statusPill').addEventListener('dblclick',()=>{ document.getElementById('apiKeyInput').value=state.apiKey||''; document.getElementById('supaUrlInput').value=state.supaUrl||''; document.getElementById('supaKeyInput').value=state.supaKey||''; document.getElementById('syncCodeInput').value=state.syncCode||''; document.getElementById('settingsModal').classList.add('show'); });
+document.getElementById('closeSettings').onclick=()=>{ document.getElementById('settingsModal').classList.remove('show'); };
+document.getElementById('saveSettings').onclick=async()=>{ state.apiKey=document.getElementById('apiKeyInput').value.trim(); state.supaUrl=document.getElementById('supaUrlInput').value.trim(); state.supaKey=document.getElementById('supaKeyInput').value.trim(); state.syncCode=document.getElementById('syncCodeInput').value.trim(); saveLocal(); initSupabase(); document.getElementById('settingsModal').classList.remove('show'); toast('Saved','ok'); if(supabaseReady){ await pullAll(); await pushTopics(); await pushSettings(); await pushScores(); } };
+document.getElementById('testConnection').onclick=async()=>{ const url=document.getElementById('supaUrlInput').value.trim(), key=document.getElementById('supaKeyInput').value.trim(), code=document.getElementById('syncCodeInput').value.trim(); if(!url||!key||!code){toast('Fill all','err');return;} try{ const r=await fetch(`${url}/rest/v1/gt_user?sync_code=eq.${encodeURIComponent(code)}&select=sync_code`,{headers:{'apikey':key,'Authorization':`Bearer ${key}`}}); if(r.ok)toast('OK','ok');else toast('Failed '+r.status,'err'); }catch(e){toast('Err '+e.message,'err');} };
+
+document.getElementById('exportAnki').onclick=()=>{ if(!state.cards.length){toast('No cards','err');return;} const rows=[['Question_DE','Question_EN','Answer_DE','Answer_EN','Topic','Level','Type']]; state.cards.forEach(c=>{ rows.push([c.qDe,c.qEn,c.aDe,c.aEn,c.topic,c.level||'A2',c.type||'qa'].map(v=>{ const s=String(v??'').replace(/"/g,'""'); return `"${s}"`; })); }); const csv=rows.map(r=>r.join(',')).join('\n'), blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`german-cards-${localDateKey()}.csv`; a.click(); };
+
+/* =========================================================
+   INIT — restore persisted UI state
+   ========================================================= */
+function rerenderAll(){
+  renderTimer(); renderStats(); renderCalendar(); renderTopics();
+  renderCards(); renderScores(); updateTopicSelects();
+  renderChat(); renderPromptsEditor(); renderNotes(); renderTopicProgress(); renderStatusPill();
+  renderQuizHistory();
+}
+
+/* Register per-type save functions for the warn modal */
+playground.translate.saveFn = async ()=>{
+  const inp = document.getElementById('translateAnswer');
+  if(!inp) return;
+  const user = inp.value.trim(); if(!user) return;
+  const src = document.querySelector('#translateQuizBox p b')?.textContent || '';
+  const ex = { id:uid(), type:'translate', topic:state.activeTopic, level:'A2',
+    payload:{ srcText:src, targetLang:'German', targetText:'', user, ok:false }, created:Date.now() };
+  state.exercises.unshift(ex); await pushExercise(ex); renderQuizHistory();
+};
+playground.listening.saveFn = async ()=>{
+  if(!lastListenText) return;
+  const ex = { id:uid(), type:'listening', topic:lastListenTopic||state.activeTopic,
+    level:lastListenLevel||'A2',
+    payload:{ text:lastListenText, questions:lastListenQuestions, examType:'excluded', format:'paragraph' },
+    created:Date.now() };
+  state.exercises.unshift(ex); await pushExercise(ex); renderQuizHistory();
+};
+playground.scramble.saveFn = async ()=>{
+  const box = document.getElementById('scrambleQuizBox');
+  if(!box || !box.querySelector('#scrambleAnswer')) return;
+  toast('Scramble already saved when generated','ok');
+};
+playground.speaking.saveFn = async ()=>{
+  if(liveChatHistory.length < 2) return;
+  const ex = { id:uid(), type:'speaking', topic:liveChatScenario||state.activeTopic,
+    level:liveChatLevel||'B1',
+    payload:{ mode:liveChatMode, scenario:liveChatScenario, history:liveChatHistory },
+    created:Date.now() };
+  state.exercises.unshift(ex); await pushExercise(ex); renderQuizHistory();
+};
+
+initSupabase();
+activateTab(state.activeTab || 'study');
+activateQuizSub(state.activeQuizSub || 'quiz-translate');
+rerenderAll();
+if(supabaseReady) pullAll();
+document.addEventListener('click', (e)=>{ if(e.target.classList.contains('cal-day')) e.preventDefault(); }, {passive:false});
+</script>
+</body>
+</html>
