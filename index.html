@@ -105,7 +105,7 @@
     flex-shrink:0; display:flex; align-items:center; justify-content:center;}
   .nav-btn:hover{border-color:var(--accent2); background:var(--panel3)}
 
-  .flashcard-wrap{flex:1; perspective:1200px; min-height:240px; cursor:pointer; user-select:none;}
+  .flashcard-wrap{flex:1; perspective:1200px; min-height:240px; cursor:pointer; user-select:none; touch-action:manipulation;}
   .flashcard{position:relative; width:100%; min-height:240px;
     transform-style:preserve-3d; transition:transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);}
   .flashcard.flipped{transform:rotateY(180deg)}
@@ -140,10 +140,16 @@
   .filter-group label{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
 
   .log-item{background:var(--panel2); border-left:3px solid var(--accent2);
-    padding:8px 12px; margin-bottom:8px; border-radius:6px; font-size:.82rem; transition:all .2s; cursor:pointer; position:relative;}
+    padding:8px 12px; margin-bottom:8px; border-radius:6px; font-size:.82rem; transition:all .2s; cursor:pointer; position:relative; display:flex; align-items:stretch; gap:10px;}
   .log-item:hover{background:var(--panel3)}
   .log-item.active-card{border-left-color:var(--accent); background:rgba(255,200,61,.1); border:1px solid var(--accent);}
+  .log-item.selected{background:rgba(91,157,255,.15); border:1px solid var(--accent2);}
   .log-item small{color:var(--muted); display:block; margin-bottom:4px}
+  .log-item .log-body{flex:1; min-width:0;}
+  .log-item .log-edit-area{display:flex; align-items:center; justify-content:center; flex-shrink:0; padding-left:8px; border-left:1px solid var(--border);}
+  .log-edit-btn{background:var(--accent2); color:#fff; border:none; padding:14px 20px; border-radius:8px; font-weight:700; font-size:.9rem; cursor:pointer; white-space:nowrap; transition:filter .15s;}
+  .log-edit-btn:hover{filter:brightness(1.15)}
+  .log-edit-btn:disabled{opacity:.5; cursor:not-allowed;}
 
   /* CALENDAR */
   .calendar{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:10px}
@@ -305,7 +311,7 @@
   .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 14px; margin-bottom: 10px; font-size: 0.9rem; line-height: 1.4; }
   .chat-bubble.user { align-self: flex-end; background: var(--accent2); color: #fff; border-bottom-right-radius: 2px; }
   .chat-bubble.ai { align-self: flex-start; background: var(--panel3); color: var(--text); border-bottom-left-radius: 2px; }
-  .chat-bubble.ai .translation { font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .chat-bubble.ai .translation { font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-style: italic; white-space: pre-wrap; }
   .chat-input-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
   .chat-input-row input { flex: 1; }
   .chat-input-row .mic-btn { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
@@ -327,11 +333,6 @@
   .selection-toolbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--accent2); border-radius: 20px; padding: 8px 16px; z-index: 200; display: none; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
   .selection-toolbar.show { display: flex; }
   .selection-toolbar button { padding: 6px 12px; font-size: 0.8rem; }
-  
-  .log-item.selected { border-left-color: var(--accent2); background: rgba(91,157,255,0.15); border: 1px solid var(--accent2); }
-  
-  .card-actions { display: flex; gap: 6px; position: absolute; right: 12px; top: 12px; opacity: 0; transition: opacity 0.2s; }
-  .log-item:hover .card-actions { opacity: 1; }
 
   @media (max-width:600px){
     .header-row h1{font-size:.85rem}
@@ -340,7 +341,9 @@
     .quiz-layout{grid-template-columns:1fr}
     .chat-container { height: 300px; }
     .topic-progress{flex-direction:column; align-items:flex-start}
-    .card-actions { opacity: 1; position: static; margin-top: 8px; justify-content: flex-end; }
+    .log-item{flex-direction:column;}
+    .log-item .log-edit-area{border-left:none; border-top:1px solid var(--border); padding-left:0; padding-top:8px; width:100%;}
+    .log-edit-btn{width:100%; padding:10px;}
   }
 </style>
 </head>
@@ -533,7 +536,7 @@
 
   <div class="card">
     <h2>Card List</h2>
-    <p class="muted">Filtered and sorted the same as the deck above. Click a card to jump to it.</p>
+    <p class="muted">Click a card to jump to it. Ctrl/Cmd+Click or Shift+Click to select multiple. On mobile, long-press a card to start selecting.</p>
     <div id="cardList"></div>
     <div class="flex" style="margin-top:10px">
       <button class="ghost tiny" id="exportAnki">Export Anki CSV</button>
@@ -1429,34 +1432,48 @@ function showCurrentCard(){
 }
 
 (function initCardFlip(){
-  const wrap=document.getElementById('flashcardWrap'), fc=document.getElementById('flashcard'); let downX=0,downY=0,downTime=0;
+  const wrap=document.getElementById('flashcardWrap'), fc=document.getElementById('flashcard');
   
-  // Mobile touch events
-  wrap.addEventListener('touchstart', e=>{ 
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  let touchMoved = false;
+
+  wrap.addEventListener('touchstart', e => {
     if (selectionMode) return;
-    const t=e.touches[0]; downX=t.clientX; downY=t.clientY; downTime=Date.now(); 
-  },{passive:true});
-  
-  wrap.addEventListener('touchend', e=>{ 
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchStartTime = Date.now();
+    touchMoved = false;
+  }, {passive: true});
+
+  wrap.addEventListener('touchmove', e => {
     if (selectionMode) return;
-    const t=e.changedTouches[0]; 
-    const moved=Math.hypot(t.clientX-downX,t.clientY-downY), elapsed=Date.now()-downTime; 
-    if(moved<10 && elapsed<500) fc.classList.toggle('flipped'); 
-  },{passive:true});
-  
-  // Desktop mouse events
-  wrap.addEventListener('mousedown', e=>{ 
+    if (!touchStartTime) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+      touchMoved = true;
+    }
+  }, {passive: true});
+
+  wrap.addEventListener('touchend', e => {
     if (selectionMode) return;
-    downX=e.clientX; downY=e.clientY; downTime=Date.now(); 
-  });
-  
-  wrap.addEventListener('mouseup', e=>{ 
+    if (!touchStartTime) return;
+    const elapsed = Date.now() - touchStartTime;
+    if (!touchMoved && elapsed < 500) {
+      fc.classList.toggle('flipped');
+    }
+    touchStartTime = 0;
+    touchMoved = false;
+  }, {passive: true});
+
+  wrap.addEventListener('click', e => {
     if (selectionMode) return;
-    const moved=Math.hypot(e.clientX-downX,e.clientY-downY), elapsed=Date.now()-downTime; 
-    if(moved<8 && elapsed<500) fc.classList.toggle('flipped'); 
+    if (Date.now() - touchStartTime < 500) return;
+    fc.classList.toggle('flipped');
   });
 
-  // Double click to edit
   wrap.addEventListener('dblclick', e => {
     if (currentCard && !selectionMode) {
        e.preventDefault();
@@ -1572,19 +1589,14 @@ function renderList(){
       const isActive = currentCard && c.id === currentCard.id;
       const isSelected = selectedCardIds.has(c.id);
       return `<div class="log-item ${isActive?'active-card':''} ${isSelected?'selected':''}" data-card-id="${c.id}">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <div style="flex:1; padding-right: 10px;">
-            <b>${escapeHtml(c.qDe||'')}</b><br>
-            <span class="muted">${escapeHtml(c.qEn||'')}</span>
-            ${c.aDe?`<br><i style="color:var(--text); opacity:0.8;">${escapeHtml(c.aDe)}</i>`:''}
-            ${c.aEn?`<br><span class="muted" style="font-size: 0.8em;">${escapeHtml(c.aEn)}</span>`:''}
-          </div>
-          <div class="card-actions">
-            <button class="ghost tiny" onclick="event.stopPropagation(); speakCardQById('${c.id}')">🔊</button>
-            <button class="ghost tiny" onclick="event.stopPropagation(); speakCardAById('${c.id}')">🗣️</button>
-            <button class="ghost tiny" onclick="event.stopPropagation(); editCard('${c.id}')" style="border-color: var(--border);">Edit</button>
-            <button class="warn tiny" onclick="event.stopPropagation(); softDelete('${c.id}')">✕</button>
-          </div>
+        <div class="log-body">
+          <b>${escapeHtml(c.qDe||'')}</b><br>
+          <span class="muted">${escapeHtml(c.qEn||'')}</span>
+          ${c.aDe?`<br><i style="color:var(--text); opacity:0.8;">${escapeHtml(c.aDe)}</i>`:''}
+          ${c.aEn?`<br><span class="muted" style="font-size: 0.8em;">${escapeHtml(c.aEn)}</span>`:''}
+        </div>
+        <div class="log-edit-area">
+          <button class="log-edit-btn" onclick="event.stopPropagation(); editCard('${c.id}')">Edit</button>
         </div>
       </div>`;
     }).join('')}
@@ -1593,10 +1605,37 @@ function renderList(){
   list.querySelectorAll('.log-item').forEach(item => {
     const id = item.dataset.cardId;
     
-    // Single click
     item.onclick = (e) => {
       if (e.target.closest('button')) return; 
       
+      if (e.ctrlKey || e.metaKey) {
+        if (selectedCardIds.has(id)) {
+          selectedCardIds.delete(id);
+          item.classList.remove('selected');
+        } else {
+          selectedCardIds.add(id);
+          item.classList.add('selected');
+        }
+        updateSelectionToolbar();
+        return;
+      }
+      
+      if (e.shiftKey && currentCard) {
+        const allCards = Array.from(list.querySelectorAll('.log-item')).map(el => el.dataset.cardId);
+        const lastIndex = allCards.indexOf(currentCard.id);
+        const currentIndex = allCards.indexOf(id);
+        if (lastIndex !== -1 && currentIndex !== -1) {
+          const start = Math.min(lastIndex, currentIndex);
+          const end = Math.max(lastIndex, currentIndex);
+          for (let i = start; i <= end; i++) {
+            selectedCardIds.add(allCards[i]);
+            list.querySelector(`[data-card-id="${allCards[i]}"]`)?.classList.add('selected');
+          }
+          updateSelectionToolbar();
+        }
+        return;
+      }
+
       if (selectionMode) {
         if (selectedCardIds.has(id)) {
           selectedCardIds.delete(id);
@@ -1612,7 +1651,6 @@ function renderList(){
       jumpToCard(id);
     };
 
-    // Long press for mobile selection
     let touchTimer;
     item.addEventListener('touchstart', (e) => {
       if (e.target.closest('button')) return;
@@ -1636,7 +1674,6 @@ function renderList(){
       clearTimeout(touchTimer);
     });
     
-    // Double click for PC edit
     item.addEventListener('dblclick', (e) => {
        if (e.target.closest('button')) return;
        if (!selectionMode) {
@@ -2006,7 +2043,7 @@ function loadSpeakingExercise(ex){
   liveChatScenario = p.scenario || ex.topic || '';
   liveChatLevel = ex.level || 'B1';
   liveChatMode = p.mode || 'normal';
-  liveChatHistory = Array.isArray(p.history) ? [...p.history] : [];
+  liveChatHistory = Array.isArray(p.history) ? p.history.map(m => ({...m})) : [];
 
   document.getElementById('speakScenario').value = liveChatScenario;
   document.getElementById('speakLevel').value = liveChatLevel;
@@ -2017,11 +2054,12 @@ function loadSpeakingExercise(ex){
   const container = document.getElementById('chatContainer');
   container.innerHTML = '';
   
-  // Load history with translations if available (we don't save separate translations, so just show text)
-  // For better UX, we could just replay the history
   liveChatHistory.forEach(m=>{
-    if(m.role==='assistant') addChatMessage('ai', m.content, ''); // Could extract translation from payload if saved
-    else if(m.role==='user') addChatMessage('user', m.content, '');
+    if(m.role==='assistant') {
+      addChatMessage('ai', m.content, m.translation || '');
+    } else if(m.role==='user') {
+      addChatMessage('user', m.content, '');
+    }
   });
   markClean('speaking');
 }
@@ -2158,7 +2196,6 @@ document.getElementById('genScrambleQ').onclick=()=>{
   let pool = topic==='all' ? state.cards : state.cards.filter(c=>c.topic===topic);
   pool = pool.filter(c=>c.qDe && c.qDe.includes(' '));
 
-  // No exercise created → mark clean (nothing to save)
   if(!pool.length){
     document.getElementById('scrambleQuizBox').innerHTML='<p class="muted">No sentences.</p>';
     markClean('scramble');
@@ -2173,7 +2210,6 @@ document.getElementById('genScrambleQ').onclick=()=>{
 
   document.getElementById('scrambleQuizBox').innerHTML=`<p class="muted">Arrange the words.</p><p style="font-size:1rem">Scrambled: <b>${shuffled.map(escapeHtml).join(' — ')}</b></p><p class="muted">Hint: ${escapeHtml(card.qEn)}</p><input id="scrambleAnswer" placeholder="Type full German sentence..."/><div class="flex" style="margin-top:10px"><button class="gold" id="checkScramble">Check</button><button class="ghost" id="askAI">Ask AI why</button><button class="ghost" id="revealScramble">Show</button></div><div id="scrambleFeedback"></div>`;
 
-  // A real, uncompleted exercise now exists → mark dirty
   markDirty('scramble');
 
   document.getElementById('checkScramble').onclick=async()=>{
@@ -2284,16 +2320,14 @@ document.getElementById('micBtn').onclick = () => {
   const input = document.getElementById('chatInput');
 
   if (micListening) {
-    // Stop listening
     if (micRecognition) micRecognition.stop();
     micListening = false;
     btn.classList.remove('recording');
   } else {
-    // Start listening
     micRecognition = new SpeechRecognition();
     micRecognition.lang = 'de-DE';
-    micRecognition.interimResults = true; // Show text as it's being spoken
-    micRecognition.continuous = true;     // Keep listening until stopped manually
+    micRecognition.interimResults = true;
+    micRecognition.continuous = true;
 
     let initialText = input.value;
 
@@ -2314,7 +2348,6 @@ document.getElementById('micBtn').onclick = () => {
         }
       }
       
-      // Append to existing text
       let newText = initialText;
       if (finalTranscript) {
          newText += (newText.length > 0 && !newText.endsWith(' ') ? ' ' : '') + finalTranscript;
@@ -2325,15 +2358,12 @@ document.getElementById('micBtn').onclick = () => {
       
       input.value = newText;
       
-      // Update initial text to include final transcript so subsequent results append correctly
       if (finalTranscript) {
          initialText = newText;
       }
     };
 
-    micRecognition.onspeechend = () => {
-      // Don't stop on speech end, wait for user to click again
-    };
+    micRecognition.onspeechend = () => {};
     
     micRecognition.onerror = (event) => {
       toast('Mic error: ' + event.error, 'err');
