@@ -118,9 +118,9 @@
   .flashcard-face .label{font-size:.65rem; text-transform:uppercase; letter-spacing:2px;
     color:var(--muted); position:absolute; top:10px; left:14px;}
   .flashcard-face .label.right{left:auto; right:14px; color:var(--accent2)}
-  .flashcard-face .q{font-size:1.3rem; font-weight:600; text-align:center; line-height:1.4}
+  .flashcard-face .q{font-size:1.3rem; font-weight:600; text-align:center; line-height:1.4; color: var(--text);}
   .flashcard-face .qen{font-size:.88rem; color:var(--muted); text-align:center}
-  .flashcard-face .a{font-size:1.15rem; color:var(--ok); text-align:center; font-weight:600}
+  .flashcard-face .a{font-size:1.15rem; color:var(--text); text-align:center; font-weight:600}
   .flashcard-face .aen{color:var(--muted); font-size:.88rem; text-align:center}
 
   .card-play-row{display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap}
@@ -140,7 +140,7 @@
   .filter-group label{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
 
   .log-item{background:var(--panel2); border-left:3px solid var(--accent2);
-    padding:8px 12px; margin-bottom:8px; border-radius:6px; font-size:.82rem; transition:all .2s; cursor:pointer;}
+    padding:8px 12px; margin-bottom:8px; border-radius:6px; font-size:.82rem; transition:all .2s; cursor:pointer; position:relative;}
   .log-item:hover{background:var(--panel3)}
   .log-item.active-card{border-left-color:var(--accent); background:rgba(255,200,61,.1); border:1px solid var(--accent);}
   .log-item small{color:var(--muted); display:block; margin-bottom:4px}
@@ -218,10 +218,13 @@
   @media(max-width:800px){ .quiz-layout{grid-template-columns:1fr} }
   .quiz-side{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; height:fit-content; position:sticky; top:80px; max-height:calc(100vh - 100px); overflow-y:auto;}
   .quiz-side h4{margin:0 0 10px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
-  .side-hist-item{background:var(--panel2); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:.78rem; cursor:pointer; border:1px solid transparent;}
+  .side-hist-item{background:var(--panel2); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:.78rem; cursor:pointer; border:1px solid transparent; position:relative; padding-right:30px;}
   .side-hist-item:hover{border-color:var(--accent2)}
   .side-hist-item .sh-title{font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .side-hist-item .sh-meta{color:var(--muted); font-size:.7rem}
+  .side-hist-item .hist-delete-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; color: var(--muted); border: none; font-size: 1rem; cursor: pointer; padding: 4px; line-height: 1; display: none; }
+  .side-hist-item:hover .hist-delete-btn { display: block; }
+  .side-hist-item .hist-delete-btn:hover { color: var(--err); }
 
   .subpanel{display:none}
   .subpanel.active{display:block}
@@ -303,8 +306,13 @@
   .chat-bubble.user { align-self: flex-end; background: var(--accent2); color: #fff; border-bottom-right-radius: 2px; }
   .chat-bubble.ai { align-self: flex-start; background: var(--panel3); color: var(--text); border-bottom-left-radius: 2px; }
   .chat-bubble.ai .translation { font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-style: italic; }
-  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
   .chat-input-row input { flex: 1; }
+  .chat-input-row .mic-btn { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .chat-input-row .mic-btn:hover { border-color: var(--accent2); }
+  .chat-input-row .mic-btn.recording { background: rgba(255, 92, 92, 0.2); border-color: var(--err); color: var(--err); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 92, 92, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 92, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 92, 92, 0); } }
+  .mic-icon { width: 20px; height: 20px; fill: currentColor; }
 
   .history-loaded-banner{
     background:rgba(91,157,255,.12); border:1px solid var(--accent2);
@@ -316,6 +324,15 @@
 
   .pagination{display:flex; gap:4px; flex-wrap:wrap; margin-top:10px}
 
+  .selection-toolbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--accent2); border-radius: 20px; padding: 8px 16px; z-index: 200; display: none; align-items: center; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  .selection-toolbar.show { display: flex; }
+  .selection-toolbar button { padding: 6px 12px; font-size: 0.8rem; }
+  
+  .log-item.selected { border-left-color: var(--accent2); background: rgba(91,157,255,0.15); border: 1px solid var(--accent2); }
+  
+  .card-actions { display: flex; gap: 6px; position: absolute; right: 12px; top: 12px; opacity: 0; transition: opacity 0.2s; }
+  .log-item:hover .card-actions { opacity: 1; }
+
   @media (max-width:600px){
     .header-row h1{font-size:.85rem}
     .tab{padding:6px 10px; font-size:.78rem}
@@ -323,6 +340,7 @@
     .quiz-layout{grid-template-columns:1fr}
     .chat-container { height: 300px; }
     .topic-progress{flex-direction:column; align-items:flex-start}
+    .card-actions { opacity: 1; position: static; margin-top: 8px; justify-content: flex-end; }
   }
 </style>
 </head>
@@ -652,7 +670,9 @@
           <div id="chatUI" style="display:none">
             <div class="chat-container" id="chatContainer"></div>
             <div class="chat-input-row">
-              <button class="ghost tiny" id="micBtn" title="Use Microphone (Speech to Text)" style="padding:8px 12px">🎤</button>
+              <button class="mic-btn" id="micBtn" title="Use Microphone (Speech to Text)">
+                <svg class="mic-icon" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+              </button>
               <input id="chatInput" placeholder="Type your response in German..." onkeypress="if(event.key==='Enter') sendChatMessage()"/>
               <button class="gold" id="sendChatBtn" onclick="sendChatMessage()">Send</button>
             </div>
@@ -721,6 +741,12 @@
 
 <button id="fab">+</button>
 <div id="toast"></div>
+
+<div class="selection-toolbar" id="selectionToolbar">
+  <span id="selectionCount" style="font-size:0.85rem; color:var(--text);">0 selected</span>
+  <button class="warn tiny" id="deleteSelectedBtn">Delete Selected</button>
+  <button class="ghost tiny" id="cancelSelectionBtn">Cancel</button>
+</div>
 
 <!-- MODALS -->
 <div class="modal-bg" id="settingsModal">
@@ -1352,6 +1378,8 @@ document.getElementById('addAllBtn').onclick = async ()=>{ if(!lastResults.lengt
    FLASHCARDS (new: filter/sort + practical pool)
    ========================================================= */
 let currentCard=null, currentCardPool=[], currentCardIdx=0;
+let selectedCardIds = new Set();
+let selectionMode = false;
 
 function filteredCards(){
   let pool = [...state.cards];
@@ -1402,21 +1430,64 @@ function showCurrentCard(){
 
 (function initCardFlip(){
   const wrap=document.getElementById('flashcardWrap'), fc=document.getElementById('flashcard'); let downX=0,downY=0,downTime=0;
-  function onDown(x,y){ downX=x; downY=y; downTime=Date.now(); }
-  function onUp(x,y){ const moved=Math.hypot(x-downX,y-downY), elapsed=Date.now()-downTime; if(moved<8 && elapsed<500) fc.classList.toggle('flipped'); }
-  wrap.addEventListener('touchstart',e=>{ const t=e.touches[0]; onDown(t.clientX,t.clientY); },{passive:true});
-  wrap.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; onUp(t.clientX,t.clientY); },{passive:true});
-  wrap.addEventListener('mousedown',e=>onDown(e.clientX,e.clientY));
-  wrap.addEventListener('mouseup',e=>onUp(e.clientX,e.clientY));
+  
+  // Mobile touch events
+  wrap.addEventListener('touchstart', e=>{ 
+    if (selectionMode) return;
+    const t=e.touches[0]; downX=t.clientX; downY=t.clientY; downTime=Date.now(); 
+  },{passive:true});
+  
+  wrap.addEventListener('touchend', e=>{ 
+    if (selectionMode) return;
+    const t=e.changedTouches[0]; 
+    const moved=Math.hypot(t.clientX-downX,t.clientY-downY), elapsed=Date.now()-downTime; 
+    if(moved<10 && elapsed<500) fc.classList.toggle('flipped'); 
+  },{passive:true});
+  
+  // Desktop mouse events
+  wrap.addEventListener('mousedown', e=>{ 
+    if (selectionMode) return;
+    downX=e.clientX; downY=e.clientY; downTime=Date.now(); 
+  });
+  
+  wrap.addEventListener('mouseup', e=>{ 
+    if (selectionMode) return;
+    const moved=Math.hypot(e.clientX-downX,e.clientY-downY), elapsed=Date.now()-downTime; 
+    if(moved<8 && elapsed<500) fc.classList.toggle('flipped'); 
+  });
+
+  // Double click to edit
+  wrap.addEventListener('dblclick', e => {
+    if (currentCard && !selectionMode) {
+       e.preventDefault();
+       editCard(currentCard.id);
+    }
+  });
 })();
 
-document.addEventListener('keydown', (e)=>{ if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return; if(state.activeTab!=='cards')return; if(e.code==='Space'){ e.preventDefault(); document.getElementById('flashcard').classList.toggle('flipped'); } });
+document.addEventListener('keydown', (e)=>{ 
+  if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return; 
+  if(state.activeTab!=='cards')return; 
+  if(e.code==='Space'){ 
+    e.preventDefault(); 
+    if (!selectionMode) document.getElementById('flashcard').classList.toggle('flipped'); 
+  } 
+});
 
-document.getElementById('prevCard').onclick = ()=>{ if(!currentCardPool.length)return; currentCardIdx=(currentCardIdx-1+currentCardPool.length)%currentCardPool.length; currentCard=currentCardPool[currentCardIdx]; showCurrentCard(); };
-document.getElementById('nextCard').onclick = ()=>{ if(!currentCardPool.length)return; currentCardIdx=(currentCardIdx+1)%currentCardPool.length; currentCard=currentCardPool[currentCardIdx]; showCurrentCard(); };
+document.getElementById('prevCard').onclick = ()=>{ if(!currentCardPool.length || selectionMode)return; currentCardIdx=(currentCardIdx-1+currentCardPool.length)%currentCardPool.length; currentCard=currentCardPool[currentCardIdx]; showCurrentCard(); };
+document.getElementById('nextCard').onclick = ()=>{ if(!currentCardPool.length || selectionMode)return; currentCardIdx=(currentCardIdx+1)%currentCardPool.length; currentCard=currentCardPool[currentCardIdx]; showCurrentCard(); };
 
-document.getElementById('speakCardQ').onclick = async ()=>{ if(!currentCard)return; await speak(currentCard.qDe,'de-DE'); if(currentCard.qEn)await speak(currentCard.qEn,'en-US'); };
-document.getElementById('speakCardA').onclick = async ()=>{ if(!currentCard||!currentCard.aDe)return; await speak(currentCard.aDe,'de-DE'); if(currentCard.aEn)await speak(currentCard.aEn,'en-US'); };
+// Play both Q and A automatically when clicking manually
+document.getElementById('speakCardQ').onclick = async ()=>{ if(!currentCard)return; await playCardFull(); };
+document.getElementById('speakCardA').onclick = async ()=>{ if(!currentCard)return; await playCardFull(); };
+
+async function playCardFull() {
+  if (!currentCard) return;
+  if (currentCard.qDe) await speak(currentCard.qDe, 'de-DE');
+  if (currentCard.qEn) await speak(currentCard.qEn, 'en-US');
+  if (currentCard.aDe) await speak(currentCard.aDe, 'de-DE');
+  if (currentCard.aEn) await speak(currentCard.aEn, 'en-US');
+}
 
 document.getElementById('cardTypeFilter').onchange = (e)=>{ state.activeCardType=e.target.value; saveLocal(); currentCardIdx=0; renderCards(); };
 document.getElementById('cardTopicFilter').onchange = (e)=>{ state.activeCardTopic=e.target.value; saveLocal(); currentCardIdx=0; renderCards(); };
@@ -1487,36 +1558,161 @@ document.getElementById('autoPauseVal').textContent = state.autoplayPause.toFixe
 
 /* CLICKABLE LIST */
 function renderList(){
-  const list=document.getElementById('cardList'); if(!state.cards.length){ list.innerHTML='<p class="muted">No cards yet.</p>'; return; }
+  const list=document.getElementById('cardList'); 
+  if(!state.cards.length){ list.innerHTML='<p class="muted">No cards yet.</p>'; return; }
   const pool = filteredCards();
   if(!pool.length){ list.innerHTML='<p class="muted">No cards match current filters.</p>'; return; }
-  const grouped={}; pool.forEach(c=>{ const key=`${c.topic||'(no topic)'} · ${(c.type||'qa').toUpperCase()} · ${c.level||'A2'}`; (grouped[key]=grouped[key]||[]).push(c); });
+  
+  const grouped={}; 
+  pool.forEach(c=>{ const key=`${c.topic||'(no topic)'} · ${(c.type||'qa').toUpperCase()} · ${c.level||'A2'}`; (grouped[key]=grouped[key]||[]).push(c); });
+  
   list.innerHTML = Object.entries(grouped).map(([key,cards])=>`
     <h3>${escapeHtml(key)} <span class="badge">${cards.length}</span></h3>
     ${cards.map(c=>{
       const isActive = currentCard && c.id === currentCard.id;
-      return `<div class="log-item ${isActive?'active-card':''}" onclick="jumpToCard('${c.id}')">
-        <b>${escapeHtml(c.qDe||'')}</b><br>
-        <span class="muted">${escapeHtml(c.qEn||'')}</span>
-        ${c.aDe?`<br><i style="color:var(--ok)">${escapeHtml(c.aDe)}</i>`:''}
-        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">
-          <button class="ghost tiny" onclick="editCard('${c.id}')">Edit</button>
-          <button class="ghost tiny" onclick="speakCardQById('${c.id}')">🔊 Q</button>
-          <button class="ghost tiny" onclick="speakCardAById('${c.id}')">🔊 A</button>
-          <button class="warn tiny" onclick="softDelete('${c.id}')">✕</button>
+      const isSelected = selectedCardIds.has(c.id);
+      return `<div class="log-item ${isActive?'active-card':''} ${isSelected?'selected':''}" data-card-id="${c.id}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="flex:1; padding-right: 10px;">
+            <b>${escapeHtml(c.qDe||'')}</b><br>
+            <span class="muted">${escapeHtml(c.qEn||'')}</span>
+            ${c.aDe?`<br><i style="color:var(--text); opacity:0.8;">${escapeHtml(c.aDe)}</i>`:''}
+            ${c.aEn?`<br><span class="muted" style="font-size: 0.8em;">${escapeHtml(c.aEn)}</span>`:''}
+          </div>
+          <div class="card-actions">
+            <button class="ghost tiny" onclick="event.stopPropagation(); speakCardQById('${c.id}')">🔊</button>
+            <button class="ghost tiny" onclick="event.stopPropagation(); speakCardAById('${c.id}')">🗣️</button>
+            <button class="ghost tiny" onclick="event.stopPropagation(); editCard('${c.id}')" style="border-color: var(--border);">Edit</button>
+            <button class="warn tiny" onclick="event.stopPropagation(); softDelete('${c.id}')">✕</button>
+          </div>
         </div>
       </div>`;
     }).join('')}
   `).join('');
+
+  list.querySelectorAll('.log-item').forEach(item => {
+    const id = item.dataset.cardId;
+    
+    // Single click
+    item.onclick = (e) => {
+      if (e.target.closest('button')) return; 
+      
+      if (selectionMode) {
+        if (selectedCardIds.has(id)) {
+          selectedCardIds.delete(id);
+          item.classList.remove('selected');
+        } else {
+          selectedCardIds.add(id);
+          item.classList.add('selected');
+        }
+        updateSelectionToolbar();
+        return;
+      }
+
+      jumpToCard(id);
+    };
+
+    // Long press for mobile selection
+    let touchTimer;
+    item.addEventListener('touchstart', (e) => {
+      if (e.target.closest('button')) return;
+      touchTimer = setTimeout(() => {
+        if (!selectionMode) {
+          selectionMode = true;
+          document.getElementById('selectionToolbar').classList.add('show');
+        }
+        selectedCardIds.add(id);
+        item.classList.add('selected');
+        updateSelectionToolbar();
+        if (navigator.vibrate) navigator.vibrate(50);
+      }, 600);
+    }, {passive: true});
+
+    item.addEventListener('touchend', () => {
+      clearTimeout(touchTimer);
+    });
+
+    item.addEventListener('touchmove', () => {
+      clearTimeout(touchTimer);
+    });
+    
+    // Double click for PC edit
+    item.addEventListener('dblclick', (e) => {
+       if (e.target.closest('button')) return;
+       if (!selectionMode) {
+         editCard(id);
+       }
+    });
+  });
 }
+
+function updateSelectionToolbar() {
+  const toolbar = document.getElementById('selectionToolbar');
+  const countEl = document.getElementById('selectionCount');
+  if (selectedCardIds.size > 0) {
+    toolbar.classList.add('show');
+    countEl.textContent = `${selectedCardIds.size} selected`;
+    selectionMode = true;
+  } else {
+    toolbar.classList.remove('show');
+    selectionMode = false;
+  }
+}
+
+document.getElementById('cancelSelectionBtn').onclick = () => {
+  selectedCardIds.clear();
+  selectionMode = false;
+  document.getElementById('selectionToolbar').classList.remove('show');
+  renderList(); 
+};
+
+document.getElementById('deleteSelectedBtn').onclick = async () => {
+  if (selectedCardIds.size === 0) return;
+  if (!confirm(`Delete ${selectedCardIds.size} cards?`)) return;
+  
+  const idsToDelete = Array.from(selectedCardIds);
+  state.cards = state.cards.filter(c => !selectedCardIds.has(c.id));
+  save();
+  
+  for (const id of idsToDelete) {
+    await deleteCardRemote(id);
+  }
+  
+  selectedCardIds.clear();
+  selectionMode = false;
+  document.getElementById('selectionToolbar').classList.remove('show');
+  renderCards();
+  updateTopicSelects();
+  toast(`${idsToDelete.length} cards deleted`, 'ok');
+};
+
 window.jumpToCard = (id) => {
   const idx = currentCardPool.findIndex(c => c.id === id);
   if(idx !== -1) { currentCardIdx = idx; currentCard = currentCardPool[idx]; showCurrentCard(); }
 };
 window.speakCardQById=(id)=>{ const c=state.cards.find(x=>x.id===id); if(c)speak(c.qDe,'de-DE',0.9); };
 window.speakCardAById=(id)=>{ const c=state.cards.find(x=>x.id===id); if(c&&c.aDe)speak(c.aDe,'de-DE',0.9); };
-window.editCard=(id)=>{ const c=state.cards.find(x=>x.id===id); if(!c)return; document.getElementById('modalQDe').value=c.qDe; document.getElementById('modalQEn').value=c.qEn; document.getElementById('modalADe').value=c.aDe; document.getElementById('modalAEn').value=c.aEn; document.getElementById('modalLevel').value=c.level||'A2'; populateModalTopics(c.topic); document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active')); document.querySelector('[data-ctab="manual"]').classList.add('active'); document.getElementById('cardTabManual').style.display='block'; document.getElementById('cardTabBulk').style.display='none'; document.getElementById('addCardModal').classList.add('show'); window._editingId=id; };
-window.softDelete=async(id)=>{ const c=state.cards.find(x=>x.id===id); if(!c)return; if(!confirm('Delete card?'))return; state.cards=state.cards.filter(x=>x.id!==id); save(); renderCards(); updateTopicSelects(); await deleteCardRemote(id); };
+window.editCard=(id)=>{ 
+  const c=state.cards.find(x=>x.id===id); if(!c)return; 
+  document.getElementById('modalQDe').value=c.qDe; 
+  document.getElementById('modalQEn').value=c.qEn; 
+  document.getElementById('modalADe').value=c.aDe; 
+  document.getElementById('modalAEn').value=c.aEn; 
+  document.getElementById('modalLevel').value=c.level||'A2'; 
+  populateModalTopics(c.topic); 
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active')); 
+  document.querySelector('[data-ctab="manual"]').classList.add('active'); 
+  document.getElementById('cardTabManual').style.display='block'; 
+  document.getElementById('cardTabBulk').style.display='none'; 
+  document.getElementById('addCardModal').classList.add('show'); 
+  window._editingId=id; 
+};
+window.softDelete=async(id)=>{ 
+  const c=state.cards.find(x=>x.id===id); if(!c)return; 
+  if(!confirm('Delete card?'))return; 
+  state.cards=state.cards.filter(x=>x.id!==id); 
+  save(); renderCards(); updateTopicSelects(); await deleteCardRemote(id); 
+};
 document.getElementById('clearCards').onclick=async()=>{ if(!confirm('Delete ALL cards?'))return; const ids=state.cards.map(c=>c.id); state.cards=[]; save(); renderCards(); updateTopicSelects(); for(const id of ids)await deleteCardRemote(id); };
 
 /* MODAL */
@@ -1570,12 +1766,28 @@ function renderQuizHistory(){
     return `<div class="side-hist-item" data-id="${e.id}">
       <div class="sh-title">${escapeHtml(title)}</div>
       <div class="sh-meta">${escapeHtml(e.level||'')} · ${new Date(e.created).toLocaleString()}</div>
+      <button class="hist-delete-btn" onclick="deleteHistoryItem(event, '${e.id}')" title="Delete">✕</button>
     </div>`;
   }).join('');
+  
   el.querySelectorAll('.side-hist-item').forEach(it=>{
-    it.onclick=()=>{ const e=state.exercises.find(x=>x.id===it.dataset.id); if(e) openSideHistoryItem(e); };
+    it.onclick=(e)=>{ 
+      if(e.target.closest('.hist-delete-btn')) return;
+      const ex=state.exercises.find(x=>x.id===it.dataset.id); 
+      if(ex) openSideHistoryItem(ex); 
+    };
   });
 }
+
+window.deleteHistoryItem = async (event, id) => {
+  event.stopPropagation();
+  if(!confirm('Delete this history item?')) return;
+  state.exercises = state.exercises.filter(e => e.id !== id);
+  save();
+  await deleteExerciseRemote(id);
+  renderQuizHistory();
+  toast('Deleted', 'ok');
+};
 
 /* =========================================================
    HISTORY LOADING (with save/ignore warning)
@@ -1804,8 +2016,11 @@ function loadSpeakingExercise(ex){
   document.getElementById('startChatBtn').textContent = 'Restart';
   const container = document.getElementById('chatContainer');
   container.innerHTML = '';
+  
+  // Load history with translations if available (we don't save separate translations, so just show text)
+  // For better UX, we could just replay the history
   liveChatHistory.forEach(m=>{
-    if(m.role==='assistant') addChatMessage('ai', m.content, '');
+    if(m.role==='assistant') addChatMessage('ai', m.content, ''); // Could extract translation from payload if saved
     else if(m.role==='user') addChatMessage('user', m.content, '');
   });
   markClean('speaking');
@@ -1992,7 +2207,7 @@ document.getElementById('startChatBtn').onclick = async () => {
   liveChatHistory = [];
 
   addChatMessage('ai', 'Hallo! Wie kann ich Ihnen helfen?', '(Hello! How can I help you?)');
-  liveChatHistory.push({ role: 'assistant', content: 'Hallo! Wie kann ich Ihnen helfen?' });
+  liveChatHistory.push({ role: 'assistant', content: 'Hallo! Wie kann ich Ihnen helfen?', translation: '(Hello! How can I help you?)' });
   markDirty('speaking');
   renderQuizHistory();
 };
@@ -2020,7 +2235,7 @@ async function sendChatMessage(){
     if(correction) translation = `💡 ${correction}\n${translation}`;
 
     addChatMessage('ai', parsed.ai_de, translation);
-    liveChatHistory.push({ role: 'assistant', content: parsed.ai_de });
+    liveChatHistory.push({ role: 'assistant', content: parsed.ai_de, translation: translation });
     speak(parsed.ai_de, 'de-DE');
   }catch(e){
     addChatMessage('ai', 'Error: ' + e.message, '');
@@ -2057,22 +2272,82 @@ document.getElementById('endChatBtn').onclick = async () => {
   toast('Conversation saved to history','ok');
 };
 
+// Microphone toggle logic
+let micRecognition = null;
+let micListening = false;
+
 document.getElementById('micBtn').onclick = () => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SpeechRecognition){ toast('Speech Recognition not supported in this browser', 'err'); return; }
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'de-DE';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
+  
   const btn = document.getElementById('micBtn');
-  btn.textContent = '🔴'; btn.disabled = true;
-  recognition.start();
-  recognition.onresult = (event) => {
-    document.getElementById('chatInput').value = event.results[0][0].transcript;
-    btn.textContent = '🎤'; btn.disabled = false;
-  };
-  recognition.onspeechend = () => { recognition.stop(); btn.textContent = '🎤'; btn.disabled = false; };
-  recognition.onerror = (event) => { toast('Mic error: ' + event.error, 'err'); btn.textContent = '🎤'; btn.disabled = false; };
+  const input = document.getElementById('chatInput');
+
+  if (micListening) {
+    // Stop listening
+    if (micRecognition) micRecognition.stop();
+    micListening = false;
+    btn.classList.remove('recording');
+  } else {
+    // Start listening
+    micRecognition = new SpeechRecognition();
+    micRecognition.lang = 'de-DE';
+    micRecognition.interimResults = true; // Show text as it's being spoken
+    micRecognition.continuous = true;     // Keep listening until stopped manually
+
+    let initialText = input.value;
+
+    micRecognition.onstart = () => {
+      micListening = true;
+      btn.classList.add('recording');
+    };
+
+    micRecognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      // Append to existing text
+      let newText = initialText;
+      if (finalTranscript) {
+         newText += (newText.length > 0 && !newText.endsWith(' ') ? ' ' : '') + finalTranscript;
+      }
+      if (interimTranscript) {
+         newText += (newText.length > 0 && !newText.endsWith(' ') ? ' ' : '') + interimTranscript;
+      }
+      
+      input.value = newText;
+      
+      // Update initial text to include final transcript so subsequent results append correctly
+      if (finalTranscript) {
+         initialText = newText;
+      }
+    };
+
+    micRecognition.onspeechend = () => {
+      // Don't stop on speech end, wait for user to click again
+    };
+    
+    micRecognition.onerror = (event) => {
+      toast('Mic error: ' + event.error, 'err');
+      micListening = false;
+      btn.classList.remove('recording');
+    };
+    
+    micRecognition.onend = () => {
+      micListening = false;
+      btn.classList.remove('recording');
+    };
+
+    micRecognition.start();
+  }
 };
 
 /* =========================================================
